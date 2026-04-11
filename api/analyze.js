@@ -63,7 +63,7 @@ export default async function handler(req, res) {
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 1000,
-          thinkingConfig: { thinkingBudget: 0
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
@@ -76,9 +76,10 @@ export default async function handler(req, res) {
     }
 
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-const match = raw.match(/\{[\s\S]*\}/);
-if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
-const parsed = JSON.parse(match[0]);
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
+    const parsed = JSON.parse(match[0]);
+    return res.status(200).json(parsed);
 
   } catch (e) {
     return res.status(500).json({ error: "Error interno: " + e.message });
