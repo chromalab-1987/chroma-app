@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 
 const C = {
   onyx:        "#0C0C0F",
@@ -25,24 +25,19 @@ const catWeights = { color: 20, typography: 20, composition: 20, consistency: 25
 function scoreColor(s) { return s >= 80 ? C.ok : s >= 55 ? C.warning : C.danger; }
 function scoreLabel(s) { return s >= 80 ? "Excelente" : s >= 65 ? "Bueno" : s >= 50 ? "Regular" : "Crítico"; }
 
-function toBase64(file) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 800;
-      let w = img.width, h = img.height;
-      if (w > MAX || h > MAX) {
-        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-        else { w = Math.round(w * MAX / h); h = MAX; }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      res(canvas.toDataURL("image/jpeg", 0.75).split(",")[1]);
-    };
-    img.onerror = rej;
-    img.src = URL.createObjectURL(file);
-  });
+const card = {
+  width: "100%", maxWidth: 660, background: C.onyxLight,
+  border: `1px solid ${C.onyxBorder}`, borderRadius: 20,
+  padding: "32px 28px", marginBottom: 16, boxSizing: "border-box",
+};
+
+function btn() {
+  return {
+    background: `linear-gradient(135deg, #7B35D4, #9B55F4)`,
+    border: "none", borderRadius: 12, color: "#F2EDE4",
+    fontSize: 14, fontWeight: 600, cursor: "pointer",
+    transition: "transform 0.15s",
+  };
 }
 
 function ScoreRing({ score }) {
@@ -101,22 +96,27 @@ function RecoCard({ text, index }) {
 
 export default function App() {
   const [phase, setPhase]       = useState("upload");
-  const [imgFile, setImgFile]   = useState(null);
-  const [imgUrl, setImgUrl]     = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [result, setResult]     = useState(null);
   const [errMsg, setErrMsg]     = useState("");
-  const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(0);
-  const fileRef  = useRef();
   const timerRef = useRef();
 
-  const handleFile = useCallback((file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    setImgFile(file);
-    setImgUrl(URL.createObjectURL(file));
-  }, []);
+  const reset = () => {
+    setPhase("upload");
+    setImageUrl("");
+    setPreviewUrl(null);
+    setResult(null);
+    setErrMsg("");
+    setProgress(0);
+  };
 
-  const onDrop = (e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); };
+  const handleUrlChange = (e) => {
+    const val = e.target.value;
+    setImageUrl(val);
+    setPreviewUrl(val.startsWith("http") ? val : null);
+  };
 
   const startProgress = () => {
     setProgress(0);
@@ -129,15 +129,14 @@ export default function App() {
   };
 
   const analyze = async () => {
-    if (!imgFile) return;
+    if (!imageUrl) return;
     setPhase("analyzing");
     startProgress();
     try {
-      const imageData = await toBase64(imgFile);
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData, mediaType: imgFile.type }),
+        body: JSON.stringify({ imageUrl }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
@@ -152,14 +151,6 @@ export default function App() {
       setPhase("error");
     }
   };
-
-  const reset = () => {
-    setPhase("upload"); setImgFile(null); setImgUrl(null);
-    setResult(null); setErrMsg(""); setProgress(0);
-  };
-
-  const card = { background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 20, padding: 32, width: "100%", maxWidth: 660, boxSizing: "border-box" };
-  const btn  = (extra = {}) => ({ border: "none", borderRadius: 12, color: C.linen, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em", background: `linear-gradient(135deg, ${C.violetDim}, ${C.violet})`, boxShadow: `0 4px 20px ${C.violetGlow}`, transition: "transform 0.15s", ...extra });
 
   return (
     <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
@@ -183,45 +174,47 @@ export default function App() {
         <div style={card}>
           <div style={{ marginBottom: 28 }}>
             <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8, lineHeight: 1.2 }}>Analizá tu identidad visual</h1>
-            <p style={{ fontSize: 14, color: C.linenMuted, lineHeight: 1.7 }}>Subí una pieza de diseño y recibí un diagnóstico claro en segundos.</p>
+            <p style={{ fontSize: 14, color: C.linenMuted, lineHeight: 1.7 }}>Pegá el link de una imagen y recibí un diagnóstico claro en segundos.</p>
           </div>
 
-          <div
-            onClick={() => fileRef.current.click()}
-            onDrop={onDrop}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            style={{ border: `2px dashed ${dragging ? C.violet : imgUrl ? C.violetDim : C.onyxBorder}`, borderRadius: 16, background: dragging ? C.violetGlow : imgUrl ? "rgba(123,53,212,0.05)" : "transparent", padding: imgUrl ? 0 : "52px 32px", textAlign: "center", cursor: "pointer", transition: "all 0.25s", overflow: "hidden", minHeight: imgUrl ? 220 : "auto", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}
-          >
-            {imgUrl ? (
-              <>
-                <img src={imgUrl} alt="preview" style={{ maxHeight: 320, maxWidth: "100%", objectFit: "contain", display: "block" }} />
-                <div style={{ position: "absolute", inset: 0, background: "rgba(12,12,15,0.6)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                  onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-                  <span style={{ fontSize: 13, color: C.linen, background: C.onyxLight, padding: "8px 18px", borderRadius: 100, border: `1px solid ${C.onyxBorder}` }}>Cambiar imagen</span>
-                </div>
-              </>
-            ) : (
-              <div>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>◈</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: C.linen, marginBottom: 6 }}>Arrastrá o hacé click para subir</div>
-                <div style={{ fontSize: 12, color: C.linenMuted }}>PNG, JPG, WEBP · Hasta 10 MB</div>
-              </div>
-            )}
+          <div style={{ marginBottom: 16 }}>
+            <input
+              type="text"
+              placeholder="https://ejemplo.com/imagen.jpg"
+              value={imageUrl}
+              onChange={handleUrlChange}
+              style={{
+                width: "100%", padding: "14px 16px", background: C.onyx,
+                border: `1px solid ${imageUrl ? C.violet : C.onyxBorder}`,
+                borderRadius: 12, color: C.linen, fontSize: 14,
+                outline: "none", boxSizing: "border-box",
+                fontFamily: FONT_BODY, transition: "border 0.2s",
+              }}
+            />
           </div>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
-          {imgUrl && (
-            <button onClick={analyze} style={{ ...btn(), width: "100%", marginTop: 20, padding: 16 }}
-              onMouseEnter={e => e.target.style.transform = "translateY(-1px)"}
-              onMouseLeave={e => e.target.style.transform = "translateY(0)"}>
-              Analizar identidad visual →
-            </button>
+          {previewUrl && (
+            <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.onyxBorder}`, marginBottom: 16, maxHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", background: C.onyx }}>
+              <img
+                src={previewUrl}
+                alt="preview"
+                style={{ maxHeight: 300, maxWidth: "100%", objectFit: "contain", display: "block" }}
+                onError={() => setPreviewUrl(null)}
+              />
+            </div>
           )}
 
+          <button
+            onClick={analyze}
+            disabled={!imageUrl.startsWith("http")}
+            style={{ ...btn(), width: "100%", padding: 16, opacity: imageUrl.startsWith("http") ? 1 : 0.4 }}
+            onMouseEnter={e => { if (imageUrl.startsWith("http")) e.target.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => e.target.style.transform = "translateY(0)"}>
+            Analizar identidad visual →
+          </button>
+
           <div style={{ marginTop: 24, padding: "14px 18px", background: C.onyx, border: `1px solid ${C.onyxBorder}`, borderRadius: 10, textAlign: "center" }}>
-            <span style={{ fontSize: 12, color: C.linenMuted, fontStyle: "italic" }}>"Subí tu diseño. Entendé qué está mal. Mejoralo."</span>
+            <span style={{ fontSize: 12, color: C.linenMuted, fontStyle: "italic" }}>"Pegá el link de tu diseño. Entendé qué está mal. Mejoralo."</span>
           </div>
         </div>
       )}
@@ -229,7 +222,7 @@ export default function App() {
       {/* ANALYZING */}
       {phase === "analyzing" && (
         <div style={{ ...card, textAlign: "center" }}>
-          {imgUrl && <div style={{ width: 80, height: 80, margin: "0 auto 28px", borderRadius: 14, overflow: "hidden", border: `1px solid ${C.onyxBorder}` }}><img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+          {previewUrl && <div style={{ width: 80, height: 80, margin: "0 auto 28px", borderRadius: 14, overflow: "hidden", border: `1px solid ${C.onyxBorder}` }}><img src={previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
           <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, marginBottom: 10 }}>Analizando tu identidad visual</div>
           <p style={{ fontSize: 13, color: C.linenMuted, marginBottom: 32 }}>Evaluando color, tipografía, composición, consistencia y jerarquía…</p>
           <div style={{ height: 3, background: C.onyxBorder, borderRadius: 2, overflow: "hidden", marginBottom: 12 }}>
@@ -252,7 +245,7 @@ export default function App() {
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Score de Identidad Visual</div>
               <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, color: C.linen, marginBottom: 12 }}>{result.summary}</div>
-              {imgUrl && <div style={{ width: 56, height: 42, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.onyxBorder}` }}><img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+              {previewUrl && <div style={{ width: 56, height: 42, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.onyxBorder}` }}><img src={previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
             </div>
           </div>
 
@@ -277,7 +270,7 @@ export default function App() {
           </div>
 
           <div style={{ ...card, textAlign: "center", marginBottom: 40 }}>
-            <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 16 }}>¿Aplicaste mejoras? Subí la nueva versión para ver tu progreso.</div>
+            <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 16 }}>¿Aplicaste mejoras? Analizá la nueva versión para ver tu progreso.</div>
             <button onClick={reset} style={{ ...btn(), padding: "13px 32px" }}
               onMouseEnter={e => e.target.style.transform = "translateY(-1px)"}
               onMouseLeave={e => e.target.style.transform = "translateY(0)"}>
