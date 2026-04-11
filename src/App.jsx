@@ -96,7 +96,7 @@ function RecoCard({ text, index }) {
 
 export default function App() {
   const [phase, setPhase]       = useState("upload");
-  const [imageUrl, setImageUrl] = useState("");
+  const [siteUrl, setSiteUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
   const [result, setResult]     = useState(null);
   const [errMsg, setErrMsg]     = useState("");
@@ -105,7 +105,7 @@ export default function App() {
 
   const reset = () => {
     setPhase("upload");
-    setImageUrl("");
+    setSiteUrl("");
     setPreviewUrl(null);
     setResult(null);
     setErrMsg("");
@@ -114,7 +114,7 @@ export default function App() {
 
   const handleUrlChange = (e) => {
     const val = e.target.value;
-    setImageUrl(val);
+    setSiteUrl(val);
     setPreviewUrl(val.startsWith("http") ? val : null);
   };
 
@@ -129,14 +129,14 @@ export default function App() {
   };
 
   const analyze = async () => {
-    if (!imageUrl) return;
+    if (!siteUrl) return;
     setPhase("analyzing");
     startProgress();
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({ siteUrl }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
@@ -174,18 +174,18 @@ export default function App() {
         <div style={card}>
           <div style={{ marginBottom: 28 }}>
             <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8, lineHeight: 1.2 }}>Analizá tu identidad visual</h1>
-            <p style={{ fontSize: 14, color: C.linenMuted, lineHeight: 1.7 }}>Pegá el link de una imagen y recibí un diagnóstico claro en segundos.</p>
+            <p style={{ fontSize: 14, color: C.linenMuted, lineHeight: 1.7 }}>Pegá la URL de un sitio web y recibí un diagnóstico claro en segundos.</p>
           </div>
 
           <div style={{ marginBottom: 16 }}>
             <input
               type="text"
-              placeholder="https://ejemplo.com/imagen.jpg"
-              value={imageUrl}
+              placeholder="https://ejemplo.com"
+              value={siteUrl}
               onChange={handleUrlChange}
               style={{
                 width: "100%", padding: "14px 16px", background: C.onyx,
-                border: `1px solid ${imageUrl ? C.violet : C.onyxBorder}`,
+                border: `1px solid ${siteUrl ? C.violet : C.onyxBorder}`,
                 borderRadius: 12, color: C.linen, fontSize: 14,
                 outline: "none", boxSizing: "border-box",
                 fontFamily: FONT_BODY, transition: "border 0.2s",
@@ -206,15 +206,15 @@ export default function App() {
 
           <button
             onClick={analyze}
-            disabled={!imageUrl.startsWith("http")}
-            style={{ ...btn(), width: "100%", padding: 16, opacity: imageUrl.startsWith("http") ? 1 : 0.4 }}
-            onMouseEnter={e => { if (imageUrl.startsWith("http")) e.target.style.transform = "translateY(-1px)"; }}
+            disabled={!siteUrl.startsWith("http")}
+            style={{ ...btn(), width: "100%", padding: 16, opacity: siteUrl.startsWith("http") ? 1 : 0.4 }}
+            onMouseEnter={e => { if (siteUrl.startsWith("http")) e.target.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => e.target.style.transform = "translateY(0)"}>
             Analizar identidad visual →
           </button>
 
           <div style={{ marginTop: 24, padding: "14px 18px", background: C.onyx, border: `1px solid ${C.onyxBorder}`, borderRadius: 10, textAlign: "center" }}>
-            <span style={{ fontSize: 12, color: C.linenMuted, fontStyle: "italic" }}>"Pegá el link de tu diseño. Entendé qué está mal. Mejoralo."</span>
+            <span style={{ fontSize: 12, color: C.linenMuted, fontStyle: "italic" }}>"Pegá la URL de tu sitio. Entendé qué está mal. Mejoralo."</span>
           </div>
         </div>
       )}
