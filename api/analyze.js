@@ -75,9 +75,9 @@ export default async function handler(req, res) {
     }
 
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(clean);
-    return res.status(200).json(parsed);
+const match = raw.match(/\{[\s\S]*\}/);
+if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
+const parsed = JSON.parse(match[0]);
 
   } catch (e) {
     return res.status(500).json({ error: "Error interno: " + e.message });
