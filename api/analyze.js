@@ -39,6 +39,13 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Descargar la imagen desde la URL
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) throw new Error("No se pudo descargar la imagen desde la URL.");
+    const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await imgResponse.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
@@ -48,7 +55,7 @@ export default async function handler(req, res) {
         contents: [{
           parts: [
             { text: PROMPT },
-            { image_url: { url: imageUrl } },
+            { inline_data: { mime_type: contentType, data: base64 } },
           ],
         }],
         generationConfig: {
