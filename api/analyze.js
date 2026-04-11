@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         contents: [{
           parts: [
             { text: PROMPT },
-            { file_data: { mime_type: mediaType, file_uri: imageUrl } },
+            { inline_data: { mime_type: mediaType, data: imageData } },
           ],
         }],
         generationConfig: {
