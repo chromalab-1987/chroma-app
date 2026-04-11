@@ -33,13 +33,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "GEMINI_API_KEY no configurada." });
   }
 
-  const { imageData, mediaType } = req.body;
-  if (!imageData || !mediaType) {
-    return res.status(400).json({ error: "Faltan imageData o mediaType." });
+  const { imageUrl } = req.body;
+  if (!imageUrl) {
+    return res.status(400).json({ error: "Falta imageUrl." });
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         contents: [{
           parts: [
             { text: PROMPT },
-            { inline_data: { mime_type: mediaType, data: imageData } },
+            { image_url: { url: imageUrl } },
           ],
         }],
         generationConfig: {
