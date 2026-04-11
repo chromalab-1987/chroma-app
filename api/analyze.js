@@ -1,5 +1,5 @@
 const PROMPT = `Eres el motor de análisis de identidad visual de CHROMA.
-Analiza la imagen recibida y devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, sin comentarios.
+Analiza la imagen de la página web recibida y devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, sin comentarios.
 
 Usa esta estructura de ejemplo como referencia:
 {
@@ -28,34 +28,36 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY no configurada." });
-  }
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const screenshotKey = process.env.SCREENSHOT_API_KEY;
 
-  const { imageUrl } = req.body;
-  if (!imageUrl) {
-    return res.status(400).json({ error: "Falta imageUrl." });
-  }
+  if (!geminiKey) return res.status(500).json({ error: "GEMINI_API_KEY no configurada." });
+  if (!screenshotKey) return res.status(500).json({ error: "SCREENSHOT_API_KEY no configurada." });
+
+  const { siteUrl } = req.body;
+  if (!siteUrl) return res.status(400).json({ error: "Falta siteUrl." });
 
   try {
-    // Descargar la imagen desde la URL
-    const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) throw new Error("No se pudo descargar la imagen desde la URL.");
-    const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
-    const arrayBuffer = await imgResponse.arrayBuffer();
+    // 1. Tomar captura de pantalla con Screenshotone
+    const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=80`;
+
+    const screenshotRes = await fetch(screenshotUrl);
+    if (!screenshotRes.ok) throw new Error("No se pudo capturar la página web.");
+
+    const arrayBuffer = await screenshotRes.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // 2. Analizar con Gemini
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
-    const response = await fetch(url, {
+    const response = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{
           parts: [
             { text: PROMPT },
-            { inline_data: { mime_type: contentType, data: base64 } },
+            { inline_data: { mime_type: "image/jpeg", data: base64 } },
           ],
         }],
         generationConfig: {
@@ -74,7 +76,6 @@ export default async function handler(req, res) {
 
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-
     const parsed = JSON.parse(clean);
     return res.status(200).json(parsed);
 
