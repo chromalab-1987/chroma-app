@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 
     // 2. Analizar con Gemini
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
 
     const response = await fetch(geminiUrl, {
       method: "POST",
