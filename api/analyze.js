@@ -1,26 +1,42 @@
-const PROMPT = `Eres el motor de análisis de identidad visual de CHROMA.
-Analiza la imagen de la página web recibida y devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, sin comentarios.
+const PROMPT = `Eres un experto en diseño y branding con 20 años de experiencia analizando identidad visual de sitios web.
 
-Usa esta estructura de ejemplo como referencia:
+Estás viendo una captura de pantalla REAL de un sitio web. Tu análisis debe ser ESPECÍFICO a lo que ves en esta imagen concreta, no genérico.
+
+INSTRUCCIONES DE ANÁLISIS:
+- Observá los colores REALES que aparecen en la pantalla (fondos, textos, botones, íconos)
+- Identificá las tipografías REALES visibles (tamaños, pesos, familias)
+- Evaluá la composición y layout REAL de la página
+- Detectá problemas CONCRETOS que ves, no problemas genéricos
+- Las recomendaciones deben ser ESPECÍFICAS a lo que ves
+
+CRITERIOS DE PUNTUACIÓN:
+- color (20%): paleta cromática, contraste, coherencia de colores
+- typography (20%): legibilidad, jerarquía tipográfica, consistencia de fuentes
+- composition (20%): layout, espaciado, alineación, uso del espacio
+- consistency (25%): coherencia visual entre elementos, sistema de diseño
+- hierarchy (15%): claridad del flujo visual, jerarquía de información
+
+Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, sin comentarios.
+
+Estructura exacta requerida:
 {
-  "score": 72,
+  "score": <número entre 0 y 100>,
   "breakdown": {
-    "color": 80,
-    "typography": 60,
-    "composition": 70,
-    "consistency": 65,
-    "hierarchy": 75
+    "color": <número entre 0 y 100>,
+    "typography": <número entre 0 y 100>,
+    "composition": <número entre 0 y 100>,
+    "consistency": <número entre 0 y 100>,
+    "hierarchy": <número entre 0 y 100>
   },
   "issues": [
-    { "code": "too_many_fonts", "severity": "error", "label": "Demasiadas tipografías distintas" }
+    { "code": "<código_corto>", "severity": "<error|warning>", "label": "<descripción específica de lo que ves>" }
   ],
   "recommendations": [
-    "Reducí a 2 tipografías máximo"
+    "<recomendación concreta y accionable basada en lo que ves>"
   ],
-  "summary": "Identidad con potencial pero inconsistente en tipografía"
+  "summary": "<resumen de 1 oración específico sobre la identidad visual de ESTE sitio>"
 }
 
-Reglas: color 20%, typography 20%, composition 20%, consistency 25%, hierarchy 15%.
 Máximo 3 issues y 3 recommendations. Solo JSON puro, sin texto extra.`;
 
 export default async function handler(req, res) {
@@ -39,7 +55,7 @@ export default async function handler(req, res) {
 
   try {
     // 1. Tomar captura de pantalla con Screenshotone
-    const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=80`;
+    const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=80&viewport_width=1280&viewport_height=800`;
 
     const screenshotRes = await fetch(screenshotUrl);
     if (!screenshotRes.ok) throw new Error("No se pudo capturar la página web.");
@@ -61,7 +77,7 @@ export default async function handler(req, res) {
           ],
         }],
         generationConfig: {
-          temperature: 0.2,
+          temperature: 0.4,
           maxOutputTokens: 1000,
           thinkingConfig: { thinkingBudget: 0 },
         },
