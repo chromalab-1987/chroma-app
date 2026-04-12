@@ -1,4 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+const FREE_LIMIT = 3;
 
 const C = {
   onyx:        "#0C0C0F",
@@ -114,106 +122,61 @@ function BrowserFrame({ url, screenshot }) {
   );
 }
 
-// Exportar PDF usando ventana de impresión del navegador
 function exportPDF(result, siteUrl) {
   const col = (s) => s >= 80 ? "#3CB87A" : s >= 55 ? "#E89B3C" : "#E8453C";
   const lbl = (s) => s >= 80 ? "Excelente" : s >= 65 ? "Bueno" : s >= 50 ? "Regular" : "Crítico";
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Reporte Chroma — ${siteUrl}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 40px; }
-        .header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; border-bottom: 2px solid #7B35D4; padding-bottom: 20px; }
-        .logo { width: 44px; height: 44px; background: linear-gradient(135deg, #4A1D8C, #9B55F4); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 20px; }
-        .brand h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
-        .brand p { font-size: 11px; color: #888; letter-spacing: 0.1em; text-transform: uppercase; }
-        .url { font-size: 13px; color: #7B35D4; margin-bottom: 24px; }
-        .score-section { display: flex; align-items: center; gap: 24px; background: #f8f8fc; border-radius: 16px; padding: 24px; margin-bottom: 24px; }
-        .score-circle { width: 100px; height: 100px; border-radius: 50%; border: 8px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
-        .score-num { font-size: 36px; font-weight: 900; line-height: 1; }
-        .score-lbl { font-size: 11px; color: #888; margin-top: 2px; }
-        .summary { font-size: 16px; font-weight: 600; color: #1a1a1a; line-height: 1.4; }
-        .section-title { font-size: 11px; color: #888; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 16px; font-weight: 600; }
-        .section { background: #f8f8fc; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .bar-row { margin-bottom: 12px; }
-        .bar-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
-        .bar-track { height: 4px; background: #e0e0e0; border-radius: 2px; }
-        .bar-fill { height: 100%; border-radius: 2px; }
-        .issue { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 12px; }
-        .reco { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-left: 3px solid #7B35D4; background: #f0ebfa; border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 12px; }
-        .reco-num { background: #4A1D8C; color: #9B55F4; border-radius: 5px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; flex-shrink: 0; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .screenshot { width: 100%; border-radius: 8px; margin-bottom: 24px; border: 1px solid #e0e0e0; }
-        .footer { margin-top: 32px; text-align: center; font-size: 11px; color: #aaa; border-top: 1px solid #eee; padding-top: 16px; }
-        @media print { body { padding: 20px; } }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="logo">C</div>
-        <div class="brand">
-          <h1>Chroma</h1>
-          <p>Laboratorio de Identidad Visual</p>
-        </div>
-      </div>
-      <div class="url">🔗 ${siteUrl}</div>
-      ${result.screenshot ? `<img src="${result.screenshot}" class="screenshot" alt="Captura del sitio" />` : ""}
-      <div class="score-section">
-        <div class="score-circle" style="border-color: ${col(result.score)};">
-          <div class="score-num" style="color: ${col(result.score)};">${result.score}</div>
-          <div class="score-lbl">${lbl(result.score)}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Score de Identidad Visual</div>
-          <div class="summary">${result.summary}</div>
-        </div>
-      </div>
-      <div class="section">
-        <div class="section-title">Breakdown por Categoría</div>
-        ${Object.entries(result.breakdown).map(([k, v]) => `
-          <div class="bar-row">
-            <div class="bar-label"><span>${catLabels[k] || k} · ${catWeights[k]}% peso</span><span style="color:${col(v)};font-weight:700;">${v}</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${col(v)};"></div></div>
-          </div>
-        `).join("")}
-      </div>
-      <div class="two-col">
-        <div class="section">
-          <div class="section-title">Problemas detectados</div>
-          ${result.issues?.length > 0 ? result.issues.map(i => `
-            <div class="issue" style="background:${i.severity==="error"?"rgba(232,69,60,0.07)":"rgba(232,155,60,0.07)"};border:1px solid ${i.severity==="error"?"rgba(232,69,60,0.2)":"rgba(232,155,60,0.2)"};">
-              ${i.severity === "error" ? "❌" : "⚠️"} ${i.label}
-            </div>
-          `).join("") : "<p style='font-size:12px;color:#888;'>Sin problemas críticos ✓</p>"}
-        </div>
-        <div class="section">
-          <div class="section-title">Recomendaciones</div>
-          ${result.recommendations?.map((r, i) => `
-            <div class="reco">
-              <div class="reco-num">${i+1}</div>
-              <span>${r}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-      <div class="footer">Reporte generado por Chroma · Laboratorio de Identidad Visual · ${new Date().toLocaleDateString("es-AR")}</div>
-    </body>
-    </html>
-  `;
-
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reporte Chroma — ${siteUrl}</title>
+  <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;padding:40px;}
+  .header{display:flex;align-items:center;gap:16px;margin-bottom:32px;border-bottom:2px solid #7B35D4;padding-bottom:20px;}
+  .logo{width:44px;height:44px;background:linear-gradient(135deg,#4A1D8C,#9B55F4);border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:20px;}
+  .score-section{display:flex;align-items:center;gap:24px;background:#f8f8fc;border-radius:16px;padding:24px;margin-bottom:24px;}
+  .score-circle{width:100px;height:100px;border-radius:50%;border:8px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+  .section{background:#f8f8fc;border-radius:12px;padding:20px;margin-bottom:20px;}
+  .section-title{font-size:11px;color:#888;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;font-weight:600;}
+  .bar-row{margin-bottom:12px;}.bar-label{display:flex;justify-content:space-between;margin-bottom:5px;font-size:12px;}
+  .bar-track{height:4px;background:#e0e0e0;border-radius:2px;}.bar-fill{height:100%;border-radius:2px;}
+  .issue{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:8px;font-size:12px;}
+  .reco{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-left:3px solid #7B35D4;background:#f0ebfa;border-radius:0 8px 8px 0;margin-bottom:8px;font-size:12px;}
+  .reco-num{background:#4A1D8C;color:#9B55F4;border-radius:5px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .screenshot{width:100%;border-radius:8px;margin-bottom:24px;border:1px solid #e0e0e0;}
+  .footer{margin-top:32px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:16px;}
+  </style></head><body>
+  <div class="header"><div class="logo">C</div><div><h1 style="font-size:22px;font-weight:700;">Chroma</h1><p style="font-size:11px;color:#888;letter-spacing:.1em;text-transform:uppercase;">Laboratorio de Identidad Visual</p></div></div>
+  <div style="font-size:13px;color:#7B35D4;margin-bottom:24px;">🔗 ${siteUrl}</div>
+  ${result.screenshot ? `<img src="${result.screenshot}" class="screenshot" alt="Captura" />` : ""}
+  <div class="score-section">
+    <div class="score-circle" style="border-color:${col(result.score)};">
+      <div style="font-size:36px;font-weight:900;color:${col(result.score)};">${result.score}</div>
+      <div style="font-size:11px;color:#888;">${lbl(result.score)}</div>
+    </div>
+    <div><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Score de Identidad Visual</div><div style="font-size:16px;font-weight:600;">${result.summary}</div></div>
+  </div>
+  <div class="section"><div class="section-title">Breakdown por Categoría</div>
+  ${Object.entries(result.breakdown).map(([k,v])=>`<div class="bar-row"><div class="bar-label"><span>${catLabels[k]||k} · ${catWeights[k]}% peso</span><span style="color:${col(v)};font-weight:700;">${v}</span></div><div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${col(v)};"></div></div></div>`).join("")}
+  </div>
+  <div class="two-col">
+    <div class="section"><div class="section-title">Problemas detectados</div>
+    ${result.issues?.length>0?result.issues.map(i=>`<div class="issue" style="background:${i.severity==="error"?"rgba(232,69,60,0.07)":"rgba(232,155,60,0.07)"};border:1px solid ${i.severity==="error"?"rgba(232,69,60,0.2)":"rgba(232,155,60,0.2)"};">${i.severity==="error"?"❌":"⚠️"} ${i.label}</div>`).join(""):"<p style='font-size:12px;color:#888;'>Sin problemas críticos ✓</p>"}
+    </div>
+    <div class="section"><div class="section-title">Recomendaciones</div>
+    ${result.recommendations?.map((r,i)=>`<div class="reco"><div class="reco-num">${i+1}</div><span>${r}</span></div>`).join("")}
+    </div>
+  </div>
+  <div class="footer">Reporte generado por Chroma · ${new Date().toLocaleDateString("es-AR")}</div>
+  </body></html>`;
   const win = window.open("", "_blank");
   win.document.write(html);
   win.document.close();
-  win.onload = () => { win.print(); };
+  win.onload = () => win.print();
 }
 
 export default function App() {
-  const [mode, setMode]           = useState("single"); // "single" | "compare"
+  const [user, setUser]           = useState(null);
+  const [usageCount, setUsageCount] = useState(0);
+  const [history, setHistory]     = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [mode, setMode]           = useState("single");
   const [phase, setPhase]         = useState("upload");
   const [siteUrl, setSiteUrl]     = useState("");
   const [siteUrl2, setSiteUrl2]   = useState("");
@@ -223,11 +186,38 @@ export default function App() {
   const [progress, setProgress]   = useState(0);
   const timerRef = useRef();
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) loadUsage(session.user.id);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) loadUsage(session.user.id);
+      else { setUsageCount(0); setHistory([]); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUsage = async (uid) => {
+    const { data } = await supabase.from("analyses").select("id, site_url, score, summary, created_at").eq("user_id", uid).order("created_at", { ascending: false });
+    setUsageCount(data?.length || 0);
+    setHistory(data || []);
+  };
+
+  const saveAnalysis = async (r, url) => {
+    if (!user) return;
+    const { screenshot, ...rest } = r;
+    await supabase.from("analyses").insert({ user_id: user.id, site_url: url, ...rest, screenshot: screenshot || null });
+    await loadUsage(user.id);
+  };
+
+  const loginWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+  const logout = () => supabase.auth.signOut();
+
   const reset = () => {
-    setPhase("upload");
-    setSiteUrl(""); setSiteUrl2("");
-    setResult(null); setResult2(null);
-    setErrMsg(""); setProgress(0);
+    setPhase("upload"); setSiteUrl(""); setSiteUrl2("");
+    setResult(null); setResult2(null); setErrMsg(""); setProgress(0);
   };
 
   const startProgress = () => {
@@ -239,15 +229,17 @@ export default function App() {
     }, 400);
   };
 
+  const canAnalyze = () => !user || usageCount < FREE_LIMIT;
+
   const analyze = async () => {
     if (!siteUrl) return;
     if (mode === "compare" && !siteUrl2) return;
+    if (!canAnalyze()) return;
     setPhase("analyzing");
     startProgress();
     try {
       const fetchAnalysis = (url) => fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteUrl: url }),
       }).then(r => r.json()).then(j => { if (j.error) throw new Error(j.error); return j; });
 
@@ -256,11 +248,14 @@ export default function App() {
         clearInterval(timerRef.current); setProgress(100);
         await new Promise(r => setTimeout(r, 400));
         setResult(r1); setResult2(r2);
+        await saveAnalysis(r1, siteUrl);
+        await saveAnalysis(r2, siteUrl2);
       } else {
         const r1 = await fetchAnalysis(siteUrl);
         clearInterval(timerRef.current); setProgress(100);
         await new Promise(r => setTimeout(r, 400));
         setResult(r1);
+        await saveAnalysis(r1, siteUrl);
       }
       setPhase("result");
     } catch (e) {
@@ -269,11 +264,13 @@ export default function App() {
     }
   };
 
+  const maxWidth = mode === "compare" && phase === "result" ? 1200 : 660;
+
   return (
     <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
 
       {/* HEADER */}
-      <div style={{ width: "100%", maxWidth: mode === "compare" && phase === "result" ? 1200 : 660, padding: "36px 0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 36 }}>
+      <div style={{ width: "100%", maxWidth, padding: "28px 0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 38, height: 38, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.linen, boxShadow: `0 0 18px ${C.violetGlow}` }}>C</div>
           <div>
@@ -281,26 +278,83 @@ export default function App() {
             <div style={{ fontSize: 10, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: -2 }}>Laboratorio de Identidad</div>
           </div>
         </div>
-        {phase === "result" && (
-          <div style={{ display: "flex", gap: 10 }}>
-            {mode === "single" && result && (
-              <button onClick={() => exportPDF(result, siteUrl)} style={{ ...btn(true), padding: "7px 16px", fontSize: 12 }}>⬇ Exportar PDF</button>
-            )}
-            <button onClick={reset} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 18px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Nuevo análisis</button>
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {phase === "result" && mode === "single" && result && (
+            <button onClick={() => exportPDF(result, siteUrl)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>⬇ PDF</button>
+          )}
+          {phase === "result" && (
+            <button onClick={reset} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 16px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Nuevo</button>
+          )}
+          {user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {history.length > 0 && (
+                <button onClick={() => setShowHistory(!showHistory)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>
+                  📋 Historial ({history.length})
+                </button>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 100 }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>
+                  {user.email[0].toUpperCase()}
+                </div>
+                <span style={{ fontSize: 12, color: C.linenDim }}>{usageCount}/{FREE_LIMIT} análisis</span>
+                <button onClick={logout} style={{ background: "none", border: "none", color: C.linenMuted, fontSize: 11, cursor: "pointer" }}>Salir</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={loginWithGoogle} style={{ ...btn(), padding: "8px 16px", fontSize: 13 }}>
+              Iniciar sesión con Google
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* HISTORIAL */}
+      {showHistory && user && (
+        <div style={{ ...card, maxWidth }}>
+          <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Historial de análisis</div>
+          {history.map((h) => (
+            <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${C.onyxBorder}` }}>
+              <div>
+                <div style={{ fontSize: 13, color: C.linen, marginBottom: 3 }}>{h.site_url}</div>
+                <div style={{ fontSize: 11, color: C.linenMuted }}>{new Date(h.created_at).toLocaleDateString("es-AR")}</div>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: scoreColor(h.score), fontFamily: FONT_DISPLAY }}>{h.score}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* LIMITE ALCANZADO */}
+      {user && usageCount >= FREE_LIMIT && phase === "upload" && (
+        <div style={{ ...card, textAlign: "center", borderColor: C.violet }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🔒</div>
+          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Límite del plan gratuito alcanzado</div>
+          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 20, lineHeight: 1.7 }}>
+            Usaste tus {FREE_LIMIT} análisis gratuitos. Próximamente podrás suscribirte para análisis ilimitados.
+          </div>
+          <div style={{ fontSize: 12, color: C.linenMuted }}>¿Querés más análisis? Contactanos en <span style={{ color: C.violetBright }}>hola@chromalab.app</span></div>
+        </div>
+      )}
+
       {/* UPLOAD */}
-      {phase === "upload" && (
+      {phase === "upload" && (!user || usageCount < FREE_LIMIT) && (
         <div style={card}>
           <div style={{ marginBottom: 24 }}>
             <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8, lineHeight: 1.2 }}>Analizá tu identidad visual</h1>
             <p style={{ fontSize: 14, color: C.linenMuted, lineHeight: 1.7 }}>Pegá la URL de un sitio web y recibí un diagnóstico claro en segundos.</p>
+            {!user && (
+              <div style={{ marginTop: 12, padding: "10px 14px", background: C.violetGlow, border: `1px solid ${C.violetDim}`, borderRadius: 10, fontSize: 12, color: C.linenDim }}>
+                💡 Iniciá sesión para guardar tu historial y tener {FREE_LIMIT} análisis gratuitos.
+              </div>
+            )}
+            {user && (
+              <div style={{ marginTop: 12, padding: "10px 14px", background: C.onyx, border: `1px solid ${C.onyxBorder}`, borderRadius: 10, fontSize: 12, color: C.linenMuted }}>
+                Análisis disponibles: <strong style={{ color: usageCount >= FREE_LIMIT - 1 ? C.warning : C.ok }}>{FREE_LIMIT - usageCount} de {FREE_LIMIT}</strong>
+              </div>
+            )}
           </div>
 
-          {/* Modo selector */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 24, background: C.onyx, borderRadius: 12, padding: 4 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 20, background: C.onyx, borderRadius: 12, padding: 4 }}>
             {["single", "compare"].map(m => (
               <button key={m} onClick={() => setMode(m)} style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", background: mode === m ? C.onyxLight : "transparent", color: mode === m ? C.linen : C.linenMuted, fontSize: 13, fontWeight: mode === m ? 600 : 400, cursor: "pointer", transition: "all 0.2s" }}>
                 {m === "single" ? "Análisis simple" : "Comparar sitios"}
@@ -354,7 +408,7 @@ export default function App() {
         </div>
       )}
 
-      {/* RESULT — SINGLE */}
+      {/* RESULT SINGLE */}
       {phase === "result" && result && mode === "single" && (
         <div style={{ width: "100%", maxWidth: 660 }}>
           <BrowserFrame url={siteUrl} screenshot={result.screenshot} />
@@ -368,9 +422,7 @@ export default function App() {
           </div>
           <div style={{ ...card, marginBottom: 16 }}>
             <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 20 }}>Breakdown por Categoría</div>
-            {Object.entries(result.breakdown).map(([k, v]) => (
-              <CategoryBar key={k} label={`${catLabels[k] || k}  ·  ${catWeights[k]}% peso`} value={v} />
-            ))}
+            {Object.entries(result.breakdown).map(([k, v]) => <CategoryBar key={k} label={`${catLabels[k] || k}  ·  ${catWeights[k]}% peso`} value={v} />)}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
             <div style={card}>
@@ -389,43 +441,35 @@ export default function App() {
         </div>
       )}
 
-      {/* RESULT — COMPARE */}
+      {/* RESULT COMPARE */}
       {phase === "result" && result && result2 && mode === "compare" && (
         <div style={{ width: "100%", maxWidth: 1200 }}>
-          {/* Winner banner */}
           <div style={{ ...card, maxWidth: 1200, textAlign: "center", background: `linear-gradient(135deg, ${C.onyxLight}, #0F0F18)`, marginBottom: 24 }}>
             <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12 }}>Resultado de la comparación</div>
             {result.score !== result2.score ? (
               <>
                 <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, color: C.linen, marginBottom: 6 }}>
-                  {result.score > result2.score ? "🏆 Gana el sitio 1" : "🏆 Gana el sitio 2"}
+                  {result.score > result2.score ? "🏆 Gana el Sitio 1" : "🏆 Gana el Sitio 2"}
                 </div>
                 <div style={{ fontSize: 13, color: C.linenMuted }}>
                   {result.score > result2.score ? siteUrl : siteUrl2} supera por {Math.abs(result.score - result2.score)} puntos
                 </div>
               </>
             ) : (
-              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, color: C.linen }}>🤝 Empate — Ambos sitios tienen el mismo score</div>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, color: C.linen }}>🤝 Empate</div>
             )}
           </div>
-
-          {/* Comparación lado a lado */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
             {[{ r: result, url: siteUrl, label: "Sitio 1" }, { r: result2, url: siteUrl2, label: "Sitio 2" }].map(({ r, url, label }) => (
               <div key={url}>
                 <div style={{ fontSize: 11, color: C.linenMuted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{label}</div>
                 <BrowserFrame url={url} screenshot={r.screenshot} />
-                <div style={{ background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 16, padding: "20px 20px 16px" }}>
+                <div style={{ background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 16, padding: "20px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
                     <ScoreRing score={r.score} size={100} />
-                    <div>
-                      <div style={{ fontSize: 11, color: C.linenMuted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Score</div>
-                      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 700, color: C.linen, lineHeight: 1.4 }}>{r.summary}</div>
-                    </div>
+                    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 700, color: C.linen, lineHeight: 1.4 }}>{r.summary}</div>
                   </div>
-                  {Object.entries(r.breakdown).map(([k, v]) => (
-                    <CategoryBar key={k} label={`${catLabels[k] || k}`} value={v} compact />
-                  ))}
+                  {Object.entries(r.breakdown).map(([k, v]) => <CategoryBar key={k} label={catLabels[k] || k} value={v} compact />)}
                   <div style={{ marginTop: 14, borderTop: `1px solid ${C.onyxBorder}`, paddingTop: 14 }}>
                     <div style={{ fontSize: 11, color: C.linenMuted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Problemas</div>
                     {r.issues?.length > 0 ? r.issues.map((iss, i) => <IssueTag key={i} issue={iss} />) : <div style={{ fontSize: 12, color: C.linenMuted }}>Sin problemas críticos ✓</div>}
@@ -438,7 +482,6 @@ export default function App() {
               </div>
             ))}
           </div>
-
           <div style={{ ...card, maxWidth: 1200, textAlign: "center", marginBottom: 40 }}>
             <button onClick={reset} style={{ ...btn(), padding: "13px 32px" }} onMouseEnter={e => e.target.style.transform = "translateY(-1px)"} onMouseLeave={e => e.target.style.transform = "translateY(0)"}>↺ Nueva comparación</button>
           </div>
@@ -450,7 +493,7 @@ export default function App() {
         <div style={{ ...card, textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
           <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Algo salió mal</div>
-          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 24, lineHeight: 1.6 }}>{errMsg || "No pudimos analizar el sitio. Intentá de nuevo."}</div>
+          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 24, lineHeight: 1.6 }}>{errMsg}</div>
           <button onClick={reset} style={{ ...btn(), padding: "12px 28px" }}>Volver a intentar</button>
         </div>
       )}
