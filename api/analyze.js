@@ -95,7 +95,9 @@ export default async function handler(req, res) {
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
     const parsed = JSON.parse(match[0]);
-    return res.status(200).json(parsed);
+
+    // 3. Devolver análisis + screenshot en base64
+    return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64}` });
 
   } catch (e) {
     return res.status(500).json({ error: "Error interno: " + e.message });
