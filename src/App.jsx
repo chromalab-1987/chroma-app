@@ -95,37 +95,29 @@ function RecoCard({ text, index }) {
 }
 
 export default function App() {
-  const [phase, setPhase]       = useState("upload");
-  const [siteUrl, setSiteUrl] = useState("");
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [result, setResult]     = useState(null);
-  const [errMsg, setErrMsg]     = useState("");
-  const [progress, setProgress] = useState(0);
+  const [phase, setPhase]         = useState("upload");
+  const [siteUrl, setSiteUrl]     = useState("");
+  const [result, setResult]       = useState(null);
+  const [errMsg, setErrMsg]       = useState("");
+  const [progress, setProgress]   = useState(0);
   const timerRef = useRef();
 
   const reset = () => {
     setPhase("upload");
     setSiteUrl("");
-    setPreviewUrl(null);
     setResult(null);
     setErrMsg("");
     setProgress(0);
-  };
-
-  const handleUrlChange = (e) => {
-    const val = e.target.value;
-    setSiteUrl(val);
-    setPreviewUrl(val.startsWith("http") ? val : null);
   };
 
   const startProgress = () => {
     setProgress(0);
     let p = 0;
     timerRef.current = setInterval(() => {
-      p += Math.random() * 7;
+      p += Math.random() * 5;
       if (p > 88) { clearInterval(timerRef.current); p = 88; }
       setProgress(Math.round(p));
-    }, 300);
+    }, 400);
   };
 
   const analyze = async () => {
@@ -165,7 +157,7 @@ export default function App() {
           </div>
         </div>
         {phase === "result" && (
-          <button onClick={reset} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 18px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Nueva imagen</button>
+          <button onClick={reset} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 18px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Nuevo análisis</button>
         )}
       </div>
 
@@ -182,7 +174,7 @@ export default function App() {
               type="text"
               placeholder="https://ejemplo.com"
               value={siteUrl}
-              onChange={handleUrlChange}
+              onChange={e => setSiteUrl(e.target.value)}
               style={{
                 width: "100%", padding: "14px 16px", background: C.onyx,
                 border: `1px solid ${siteUrl ? C.violet : C.onyxBorder}`,
@@ -192,17 +184,6 @@ export default function App() {
               }}
             />
           </div>
-
-          {previewUrl && (
-            <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.onyxBorder}`, marginBottom: 16, maxHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", background: C.onyx }}>
-              <img
-                src={previewUrl}
-                alt="preview"
-                style={{ maxHeight: 300, maxWidth: "100%", objectFit: "contain", display: "block" }}
-                onError={() => setPreviewUrl(null)}
-              />
-            </div>
-          )}
 
           <button
             onClick={analyze}
@@ -222,8 +203,8 @@ export default function App() {
       {/* ANALYZING */}
       {phase === "analyzing" && (
         <div style={{ ...card, textAlign: "center" }}>
-          {previewUrl && <div style={{ width: 80, height: 80, margin: "0 auto 28px", borderRadius: 14, overflow: "hidden", border: `1px solid ${C.onyxBorder}` }}><img src={previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, marginBottom: 10 }}>Analizando tu identidad visual</div>
+          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, marginBottom: 10 }}>Capturando y analizando el sitio</div>
+          <p style={{ fontSize: 13, color: C.linenMuted, marginBottom: 8 }}>{siteUrl}</p>
           <p style={{ fontSize: 13, color: C.linenMuted, marginBottom: 32 }}>Evaluando color, tipografía, composición, consistencia y jerarquía…</p>
           <div style={{ height: 3, background: C.onyxBorder, borderRadius: 2, overflow: "hidden", marginBottom: 12 }}>
             <div style={{ height: "100%", width: `${progress}%`, background: `linear-gradient(90deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 2, transition: "width 0.4s ease", boxShadow: `0 0 8px ${C.violetGlow}` }} />
@@ -240,15 +221,33 @@ export default function App() {
       {/* RESULT */}
       {phase === "result" && result && (
         <div style={{ width: "100%", maxWidth: 660 }}>
+
+          {/* Captura de pantalla del sitio */}
+          {result.screenshot && (
+            <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 16 }}>
+              <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.onyxBorder}`, display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#E8453C" }} />
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#E89B3C" }} />
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3CB87A" }} />
+                </div>
+                <div style={{ fontSize: 11, color: C.linenMuted, flex: 1, textAlign: "center" }}>{siteUrl}</div>
+              </div>
+              <img src={result.screenshot} alt="Captura del sitio" style={{ width: "100%", display: "block" }} />
+            </div>
+          )}
+
+          {/* Score */}
           <div style={{ ...card, background: `linear-gradient(135deg, ${C.onyxLight}, #0F0F18)`, display: "flex", gap: 28, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
             <ScoreRing score={result.score} />
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Score de Identidad Visual</div>
-              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, color: C.linen, marginBottom: 12 }}>{result.summary}</div>
-              {previewUrl && <div style={{ width: 56, height: 42, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.onyxBorder}` }}><img src={previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, color: C.linen, marginBottom: 8 }}>{result.summary}</div>
+              <div style={{ fontSize: 12, color: C.linenMuted }}>{siteUrl}</div>
             </div>
           </div>
 
+          {/* Breakdown */}
           <div style={{ ...card, marginBottom: 16 }}>
             <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 20 }}>Breakdown por Categoría</div>
             {Object.entries(result.breakdown).map(([k, v]) => (
@@ -256,6 +255,7 @@ export default function App() {
             ))}
           </div>
 
+          {/* Issues y Recomendaciones */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
             <div style={card}>
               <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Problemas detectados</div>
@@ -269,6 +269,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* Re-analizar */}
           <div style={{ ...card, textAlign: "center", marginBottom: 40 }}>
             <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 16 }}>¿Aplicaste mejoras? Analizá la nueva versión para ver tu progreso.</div>
             <button onClick={reset} style={{ ...btn(), padding: "13px 32px" }}
@@ -285,7 +286,7 @@ export default function App() {
         <div style={{ ...card, textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
           <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Algo salió mal</div>
-          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 24, lineHeight: 1.6 }}>{errMsg || "No pudimos analizar la imagen. Intentá de nuevo."}</div>
+          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 24, lineHeight: 1.6 }}>{errMsg || "No pudimos analizar el sitio. Intentá de nuevo."}</div>
           <button onClick={reset} style={{ ...btn(), padding: "12px 28px" }}>Volver a intentar</button>
         </div>
       )}
