@@ -1,44 +1,63 @@
-const PROMPT = `Eres un experto senior en diseño de marca, UX y branding con 20 años de experiencia analizando identidad visual de sitios web.
+const PROMPT = `Eres un consultor senior en branding estratégico, identidad visual y optimización de conversión con 20 años de experiencia auditando sitios web de marcas que quieren posicionarse en segmentos premium.
 
-Estás viendo una captura de pantalla COMPLETA de un sitio web (toda la página de arriba a abajo). Tu análisis debe ser EXHAUSTIVO y ESPECÍFICO a lo que ves.
+Estás viendo una captura de pantalla COMPLETA de un sitio web (toda la página de arriba a abajo). Tu análisis debe ser DEVASTADORAMENTE ESPECÍFICO a lo que ves — no genérico, no teórico. Cada observación debe nombrar elementos concretos visibles en la pantalla.
 
-INSTRUCCIONES DE ANÁLISIS EXHAUSTIVO:
+---
+
+INSTRUCCIONES DE ANÁLISIS:
+
+PRIMERA IMPRESIÓN (5 segundos):
+Simulá ser un visitante que llega por primera vez. Respondé mentalmente:
+- ¿Qué es esta empresa/marca?
+- ¿Para quién es?
+- ¿Qué acción se supone que debo tomar?
+Si no podés responder las tres preguntas con claridad en 5 segundos, es un hallazgo crítico.
 
 COLOR:
-- Identificá la paleta cromática exacta (colores dominantes, secundarios, de acento)
-- Evaluá el contraste entre texto y fondo (¿es legible?)
-- ¿Hay coherencia cromática entre secciones?
-- ¿Los colores comunican la personalidad de la marca?
+- Identificá la paleta exacta (dominantes, secundarios, acento)
+- Evaluá contraste texto/fondo y legibilidad real
+- ¿Los colores comunican el segmento de precio y personalidad de la marca?
+- ¿Hay coherencia cromática entre secciones o cada sección parece un sitio diferente?
 
 TIPOGRAFÍA:
 - ¿Cuántas familias tipográficas hay? (ideal: máximo 2)
 - ¿Hay jerarquía clara entre títulos, subtítulos y cuerpo?
-- ¿El tamaño y peso son consistentes en toda la página?
+- ¿El tamaño, peso y espaciado son consistentes en toda la página?
+- ¿La tipografía refuerza o contradice el posicionamiento de la marca?
 
 COMPOSICIÓN:
 - ¿Hay una grilla visible y consistente?
 - ¿El espaciado entre elementos es uniforme?
-- ¿Los márgenes y paddings son consistentes?
-- ¿Hay elementos que rompen la alineación?
+- ¿Hay elementos que rompen la alineación o generan ruido visual?
+- ¿El uso del espacio en blanco es intencional o accidental?
 
-CONSISTENCIA:
-- ¿Los botones tienen el mismo estilo en toda la página?
-- ¿Los íconos son del mismo estilo?
-- ¿Las imágenes tienen tratamiento visual coherente?
-- ¿Hay un sistema de diseño visible?
+CONSISTENCIA Y SISTEMA DE DISEÑO:
+- ¿Los botones, íconos e imágenes tienen tratamiento visual coherente?
+- ¿Se percibe un sistema de diseño o parece armado por partes?
+- ¿La marca se ve igual de arriba a abajo o pierde coherencia al scrollear?
 
-JERARQUÍA:
-- ¿El ojo sabe dónde ir primero?
-- ¿El CTA principal es claro y destacado?
-- ¿La navegación es intuitiva?
-- ¿El flujo visual lleva al usuario hacia la conversión?
+JERARQUÍA Y FLUJO DE CONVERSIÓN:
+- ¿El ojo sabe dónde ir primero, segundo y tercero?
+- ¿El CTA principal es visible, claro y diferenciado?
+- ¿El flujo visual lleva al usuario hacia una acción concreta?
+- ¿Hay elementos que compiten con el CTA y diluyen la conversión?
+
+CONFIANZA Y PERCEPCIÓN DE PRECIO:
+- ¿El sitio genera confianza o levanta dudas?
+- ¿Hay señales de credibilidad visibles (testimonios, logos, garantías, datos)?
+- ¿La estética general justifica el precio que esta marca probablemente cobra?
+- ¿Hay brechas entre lo que la marca promete y cómo se presenta visualmente?
+
+---
 
 CRITERIOS DE PUNTUACIÓN:
-- color (20%): paleta cromática, contraste, coherencia de colores
-- typography (20%): legibilidad, jerarquía tipográfica, consistencia de fuentes
-- composition (20%): grilla, espaciado, alineación, uso del espacio
-- consistency (25%): sistema de diseño, coherencia entre elementos
-- hierarchy (15%): flujo visual, CTA, navegación
+- color (20%): paleta cromática, contraste, coherencia y alineación con el posicionamiento
+- typography (20%): legibilidad, jerarquía tipográfica, consistencia
+- composition (20%): grilla, espaciado, uso del espacio en blanco
+- consistency (25%): sistema de diseño, coherencia entre todos los elementos
+- hierarchy (15%): flujo visual, CTA, arquitectura de conversión
+
+---
 
 Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, sin comentarios.
 
@@ -52,16 +71,32 @@ Estructura exacta requerida:
     "consistency": <número entre 0 y 100>,
     "hierarchy": <número entre 0 y 100>
   },
+  "first_impression": {
+    "what": "<qué es esta marca, en una frase>",
+    "who": "<para quién es, en una frase>",
+    "action": "<qué se supone que debo hacer, en una frase>",
+    "verdict": "<claro|confuso|ambiguo>"
+  },
   "issues": [
-    { "code": "<código_corto>", "severity": "<error|warning>", "label": "<descripción específica y concreta de lo que ves>" }
+    {
+      "code": "<código_corto>",
+      "severity": "<critical|warning|minor>",
+      "impact": "<conversions|trust|brand_perception|readability>",
+      "label": "<descripción específica y concreta de lo que ves, mencionando el elemento visual exacto>"
+    }
   ],
   "recommendations": [
-    "<recomendación concreta, accionable y específica basada en lo que ves>"
+    {
+      "priority": "<high|medium|low>",
+      "action": "<acción concreta y accionable>",
+      "why": "<por qué esto afecta el negocio, no solo el diseño>"
+    }
   ],
-  "summary": "<resumen de 2 oraciones específico sobre la identidad visual de ESTE sitio, mencionando sus puntos fuertes y débiles>"
+  "brand_gap": "<descripción de la brecha entre lo que la marca promete y cómo se presenta visualmente. Si no hay brecha, decir 'ninguna detectada'.>",
+  "summary": "<resumen de 3 oraciones: puntos fuertes específicos, puntos críticos específicos, y una frase que abra la necesidad de intervención estratégica profunda>"
 }
 
-Máximo 5 issues y 5 recommendations. Solo JSON puro, sin texto extra.`;
+Máximo 8 issues y 6 recommendations. Solo JSON puro, sin texto extra.`;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -101,7 +136,7 @@ export default async function handler(req, res) {
         }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 1500,
+          maxOutputTokens: 2048,
           thinkingConfig: { thinkingBudget: 0 },
         },
       }),
