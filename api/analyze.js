@@ -1,20 +1,45 @@
-const PROMPT = `Eres un experto en diseño y branding con 20 años de experiencia analizando identidad visual de sitios web.
+const PROMPT = `Eres un experto senior en diseño de marca, UX y branding con 20 años de experiencia analizando identidad visual de sitios web.
 
-Estás viendo una captura de pantalla REAL de un sitio web. Tu análisis debe ser ESPECÍFICO a lo que ves en esta imagen concreta, no genérico.
+Estás viendo UNA O MÁS capturas de pantalla REALES de un sitio web (hero, sección media y footer). Tu análisis debe ser EXHAUSTIVO y ESPECÍFICO a lo que ves en estas imágenes concretas.
 
-INSTRUCCIONES DE ANÁLISIS:
-- Observá los colores REALES que aparecen en la pantalla (fondos, textos, botones, íconos)
-- Identificá las tipografías REALES visibles (tamaños, pesos, familias)
-- Evaluá la composición y layout REAL de la página
-- Detectá problemas CONCRETOS que ves, no problemas genéricos
-- Las recomendaciones deben ser ESPECÍFICAS a lo que ves
+INSTRUCCIONES DE ANÁLISIS EXHAUSTIVO:
+
+COLOR:
+- Identificá la paleta cromática exacta (colores dominantes, secundarios, de acento)
+- Evaluá el contraste entre texto y fondo (¿es legible?)
+- ¿Hay coherencia cromática entre secciones?
+- ¿Los colores comunican la personalidad de la marca?
+
+TIPOGRAFÍA:
+- ¿Cuántas familias tipográficas hay? (ideal: máximo 2)
+- ¿Hay jerarquía clara entre títulos, subtítulos y cuerpo?
+- ¿El tamaño y peso son consistentes en toda la página?
+- ¿La tipografía es legible en mobile y desktop?
+
+COMPOSICIÓN:
+- ¿Hay una grilla visible y consistente?
+- ¿El espaciado entre elementos es uniforme?
+- ¿Los márgenes y paddings son consistentes?
+- ¿Hay elementos que rompen la alineación?
+
+CONSISTENCIA:
+- ¿Los botones tienen el mismo estilo en toda la página?
+- ¿Los íconos son del mismo estilo (filled, outline, etc.)?
+- ¿Las imágenes tienen tratamiento visual coherente?
+- ¿Hay un sistema de diseño visible o parece armado sin criterio?
+
+JERARQUÍA:
+- ¿El ojo sabe dónde ir primero?
+- ¿El CTA principal es claro y destacado?
+- ¿La navegación es intuitiva?
+- ¿El flujo visual lleva al usuario hacia la conversión?
 
 CRITERIOS DE PUNTUACIÓN:
 - color (20%): paleta cromática, contraste, coherencia de colores
 - typography (20%): legibilidad, jerarquía tipográfica, consistencia de fuentes
-- composition (20%): layout, espaciado, alineación, uso del espacio
-- consistency (25%): coherencia visual entre elementos, sistema de diseño
-- hierarchy (15%): claridad del flujo visual, jerarquía de información
+- composition (20%): grilla, espaciado, alineación, uso del espacio
+- consistency (25%): sistema de diseño, coherencia entre elementos
+- hierarchy (15%): flujo visual, CTA, navegación
 
 Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin backticks, sin comentarios.
 
@@ -29,15 +54,15 @@ Estructura exacta requerida:
     "hierarchy": <número entre 0 y 100>
   },
   "issues": [
-    { "code": "<código_corto>", "severity": "<error|warning>", "label": "<descripción específica de lo que ves>" }
+    { "code": "<código_corto>", "severity": "<error|warning>", "label": "<descripción específica y concreta de lo que ves>" }
   ],
   "recommendations": [
-    "<recomendación concreta y accionable basada en lo que ves>"
+    "<recomendación concreta, accionable y específica basada en lo que ves>"
   ],
-  "summary": "<resumen de 1 oración específico sobre la identidad visual de ESTE sitio>"
+  "summary": "<resumen de 2 oraciones específico sobre la identidad visual de ESTE sitio, mencionando sus puntos fuertes y débiles>"
 }
 
-Máximo 3 issues y 3 recommendations. Solo JSON puro, sin texto extra.`;
+Máximo 5 issues y 5 recommendations. Solo JSON puro, sin texto extra.`;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -54,16 +79,30 @@ export default async function handler(req, res) {
   if (!siteUrl) return res.status(400).json({ error: "Falta siteUrl." });
 
   try {
-    // 1. Tomar captura de pantalla con Screenshotone
-    const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=80&viewport_width=1280&viewport_height=800`;
+    // 1. Tomar 3 capturas: hero, medio y footer (página completa)
+    const takeScreenshot = async (scrollPosition) => {
+      const url = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=75&viewport_width=1280&viewport_height=900&full_page=true&scroll_position=${scrollPosition}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("No se pudo capturar la página web.");
+      const buf = await res.arrayBuffer();
+      return Buffer.from(buf).toString("base64");
+    };
+
+    // Captura principal (página completa)
+    const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=75&viewport_width=1280&viewport_height=900&full_page=true`;
 
     const screenshotRes = await fetch(screenshotUrl);
     if (!screenshotRes.ok) throw new Error("No se pudo capturar la página web.");
-
     const arrayBuffer = await screenshotRes.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const base64Main = Buffer.from(arrayBuffer).toString("base64");
 
-    // 2. Analizar con Gemini
+    // Capturas adicionales: hero y sección media
+    const [base64Hero, base64Mid] = await Promise.all([
+      takeScreenshot(0),
+      takeScreenshot(50),
+    ]);
+
+    // 2. Analizar con Gemini enviando las 3 capturas
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
 
     const response = await fetch(geminiUrl, {
@@ -73,12 +112,17 @@ export default async function handler(req, res) {
         contents: [{
           parts: [
             { text: PROMPT },
-            { inline_data: { mime_type: "image/jpeg", data: base64 } },
+            { text: "Captura 1 — Vista superior (hero/header):" },
+            { inline_data: { mime_type: "image/jpeg", data: base64Hero } },
+            { text: "Captura 2 — Sección media de la página:" },
+            { inline_data: { mime_type: "image/jpeg", data: base64Mid } },
+            { text: "Captura 3 — Página completa:" },
+            { inline_data: { mime_type: "image/jpeg", data: base64Main } },
           ],
         }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 1000,
+          maxOutputTokens: 1500,
           thinkingConfig: { thinkingBudget: 0 },
         },
       }),
@@ -96,8 +140,8 @@ export default async function handler(req, res) {
     if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
     const parsed = JSON.parse(match[0]);
 
-    // 3. Devolver análisis + screenshot en base64
-    return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64}` });
+    // 3. Devolver análisis + screenshot principal
+    return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64Main}` });
 
   } catch (e) {
     return res.status(500).json({ error: "Error interno: " + e.message });
