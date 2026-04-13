@@ -1,6 +1,6 @@
 const PROMPT = `Eres un experto senior en diseño de marca, UX y branding con 20 años de experiencia analizando identidad visual de sitios web.
 
-Estás viendo UNA O MÁS capturas de pantalla REALES de un sitio web (hero, sección media y footer). Tu análisis debe ser EXHAUSTIVO y ESPECÍFICO a lo que ves en estas imágenes concretas.
+Estás viendo una captura de pantalla COMPLETA de un sitio web (toda la página de arriba a abajo). Tu análisis debe ser EXHAUSTIVO y ESPECÍFICO a lo que ves.
 
 INSTRUCCIONES DE ANÁLISIS EXHAUSTIVO:
 
@@ -14,7 +14,6 @@ TIPOGRAFÍA:
 - ¿Cuántas familias tipográficas hay? (ideal: máximo 2)
 - ¿Hay jerarquía clara entre títulos, subtítulos y cuerpo?
 - ¿El tamaño y peso son consistentes en toda la página?
-- ¿La tipografía es legible en mobile y desktop?
 
 COMPOSICIÓN:
 - ¿Hay una grilla visible y consistente?
@@ -24,9 +23,9 @@ COMPOSICIÓN:
 
 CONSISTENCIA:
 - ¿Los botones tienen el mismo estilo en toda la página?
-- ¿Los íconos son del mismo estilo (filled, outline, etc.)?
+- ¿Los íconos son del mismo estilo?
 - ¿Las imágenes tienen tratamiento visual coherente?
-- ¿Hay un sistema de diseño visible o parece armado sin criterio?
+- ¿Hay un sistema de diseño visible?
 
 JERARQUÍA:
 - ¿El ojo sabe dónde ir primero?
@@ -79,30 +78,15 @@ export default async function handler(req, res) {
   if (!siteUrl) return res.status(400).json({ error: "Falta siteUrl." });
 
   try {
-    // 1. Tomar 3 capturas: hero, medio y footer (página completa)
-    const takeScreenshot = async (scrollPosition) => {
-      const url = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=75&viewport_width=1280&viewport_height=900&full_page=true&scroll_position=${scrollPosition}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("No se pudo capturar la página web.");
-      const buf = await res.arrayBuffer();
-      return Buffer.from(buf).toString("base64");
-    };
-
-    // Captura principal (página completa)
+    // 1. Captura de página completa
     const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=75&viewport_width=1280&viewport_height=900&full_page=true`;
 
     const screenshotRes = await fetch(screenshotUrl);
     if (!screenshotRes.ok) throw new Error("No se pudo capturar la página web.");
     const arrayBuffer = await screenshotRes.arrayBuffer();
-    const base64Main = Buffer.from(arrayBuffer).toString("base64");
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-    // Capturas adicionales: hero y sección media
-    const [base64Hero, base64Mid] = await Promise.all([
-      takeScreenshot(0),
-      takeScreenshot(50),
-    ]);
-
-    // 2. Analizar con Gemini enviando las 3 capturas
+    // 2. Analizar con Gemini
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
 
     const response = await fetch(geminiUrl, {
@@ -112,12 +96,7 @@ export default async function handler(req, res) {
         contents: [{
           parts: [
             { text: PROMPT },
-            { text: "Captura 1 — Vista superior (hero/header):" },
-            { inline_data: { mime_type: "image/jpeg", data: base64Hero } },
-            { text: "Captura 2 — Sección media de la página:" },
-            { inline_data: { mime_type: "image/jpeg", data: base64Mid } },
-            { text: "Captura 3 — Página completa:" },
-            { inline_data: { mime_type: "image/jpeg", data: base64Main } },
+            { inline_data: { mime_type: "image/jpeg", data: base64 } },
           ],
         }],
         generationConfig: {
@@ -140,8 +119,7 @@ export default async function handler(req, res) {
     if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
     const parsed = JSON.parse(match[0]);
 
-    // 3. Devolver análisis + screenshot principal
-    return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64Main}` });
+    return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64}` });
 
   } catch (e) {
     return res.status(500).json({ error: "Error interno: " + e.message });
