@@ -332,7 +332,7 @@ export default function App() {
           <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 20, lineHeight: 1.7 }}>
             Usaste tus {FREE_LIMIT} análisis gratuitos. Próximamente podrás suscribirte para análisis ilimitados.
           </div>
-          <div style={{ fontSize: 12, color: C.linenMuted }}>¿Querés más análisis? Contactanos en <span style={{ color: C.violetBright }}>hola@chromalab.app</span></div>
+          <div style={{ fontSize: 12, color: C.linenMuted }}>¿Querés más análisis? Contactanos en <span style={{ color: C.violetBright }}>hola@chromalab.com.ar</span></div>
         </div>
       )}
 
