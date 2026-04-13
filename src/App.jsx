@@ -176,6 +176,7 @@ export default function App() {
   const [usageCount, setUsageCount] = useState(0);
   const [history, setHistory]     = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedHistory, setSelectedHistory] = useState(null);
   const [mode, setMode]           = useState("single");
   const [phase, setPhase]         = useState("upload");
   const [siteUrl, setSiteUrl]     = useState("");
@@ -200,7 +201,7 @@ export default function App() {
   }, []);
 
   const loadUsage = async (uid) => {
-    const { data } = await supabase.from("analyses").select("id, site_url, score, summary, created_at").eq("user_id", uid).order("created_at", { ascending: false });
+    const { data } = await supabase.from("analyses").select("*").eq("user_id", uid).order("created_at", { ascending: false });
     setUsageCount(data?.length || 0);
     setHistory(data || []);
   };
@@ -265,6 +266,58 @@ export default function App() {
   };
 
   const maxWidth = mode === "compare" && phase === "result" ? 1200 : 660;
+
+  // Vista de detalle del historial
+  if (selectedHistory) {
+    const h = selectedHistory;
+    return (
+      <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
+        <div style={{ width: "100%", maxWidth: 660, padding: "28px 0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 38, height: 38, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.linen }}>C</div>
+            <div>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700 }}>Chroma</div>
+              <div style={{ fontSize: 10, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase" }}>Laboratorio de Identidad</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => exportPDF(h, h.site_url)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>⬇ PDF</button>
+            <button onClick={() => setSelectedHistory(null)} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 16px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Historial</button>
+          </div>
+        </div>
+        <div style={{ width: "100%", maxWidth: 660 }}>
+          <div style={{ fontSize: 11, color: C.linenMuted, marginBottom: 12 }}>Analizado el {new Date(h.created_at).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })}</div>
+          <BrowserFrame url={h.site_url} screenshot={h.screenshot} />
+          <div style={{ ...card, background: `linear-gradient(135deg, ${C.onyxLight}, #0F0F18)`, display: "flex", gap: 28, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+            <ScoreRing score={h.score} />
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 8 }}>Score de Identidad Visual</div>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, color: C.linen, marginBottom: 8 }}>{h.summary}</div>
+              <div style={{ fontSize: 12, color: C.linenMuted }}>{h.site_url}</div>
+            </div>
+          </div>
+          <div style={{ ...card, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 20 }}>Breakdown por Categoría</div>
+            {Object.entries(h.breakdown).map(([k, v]) => <CategoryBar key={k} label={`${catLabels[k] || k}  ·  ${catWeights[k]}% peso`} value={v} />)}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
+            <div style={card}>
+              <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Problemas detectados</div>
+              {h.issues?.length > 0 ? h.issues.map((iss, i) => <IssueTag key={i} issue={iss} />) : <div style={{ fontSize: 13, color: C.linenMuted }}>Sin problemas críticos ✓</div>}
+            </div>
+            <div style={card}>
+              <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Recomendaciones</div>
+              {h.recommendations?.map((r, i) => <RecoCard key={i} text={r} index={i} />)}
+            </div>
+          </div>
+          <div style={{ ...card, textAlign: "center", marginBottom: 40 }}>
+            <button onClick={() => setSelectedHistory(null)} style={{ ...btn(), padding: "13px 32px" }}>← Volver al historial</button>
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.08em", textAlign: "center", paddingBottom: 24 }}>CHROMA © 2025 · Laboratorio de Identidad Visual</div>
+      </div>
+    );
+  }
 
   // Pantalla de login obligatorio
   if (!user) {
@@ -356,10 +409,12 @@ export default function App() {
         <div style={{ ...card, maxWidth }}>
           <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Historial de análisis</div>
           {history.map((h) => (
-            <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${C.onyxBorder}` }}>
+            <div key={h.id} onClick={() => setSelectedHistory(h)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${C.onyxBorder}`, cursor: "pointer" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(123,53,212,0.05)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <div>
                 <div style={{ fontSize: 13, color: C.linen, marginBottom: 3 }}>{h.site_url}</div>
-                <div style={{ fontSize: 11, color: C.linenMuted }}>{new Date(h.created_at).toLocaleDateString("es-AR")}</div>
+                <div style={{ fontSize: 11, color: C.linenMuted }}>{new Date(h.created_at).toLocaleDateString("es-AR")} · Ver análisis →</div>
               </div>
               <div style={{ fontSize: 22, fontWeight: 900, color: scoreColor(h.score), fontFamily: FONT_DISPLAY }}>{h.score}</div>
             </div>
