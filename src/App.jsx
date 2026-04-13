@@ -176,6 +176,9 @@ export default function App() {
   const [usageCount, setUsageCount] = useState(0);
   const [history, setHistory]     = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [userPlan, setUserPlan] = useState("free");
   const [mode, setMode]           = useState("single");
@@ -200,6 +203,32 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  const ADMIN_EMAIL = "labid.chroma@gmail.com";
+  const isAdmin = () => user?.email === ADMIN_EMAIL;
+
+  const loadAdminUsers = async () => {
+    setAdminLoading(true);
+    // Cargar todos los usuarios con sus planes y cantidad de análisis este mes
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+
+    const { data: plans } = await supabase.from("user_plans").select("user_id, plan, updated_at");
+    const { data: analyses } = await supabase.from("analyses").select("user_id, created_at").gte("created_at", startOfMonth.toISOString());
+
+    // Agrupar análisis por usuario
+    const countByUser = {};
+    analyses?.forEach(a => { countByUser[a.user_id] = (countByUser[a.user_id] || 0) + 1; });
+
+    const users = plans?.map(p => ({ ...p, analysisCount: countByUser[p.user_id] || 0 })) || [];
+    setAdminUsers(users);
+    setAdminLoading(false);
+  };
+
+  const updateUserPlan = async (userId, newPlan) => {
+    await supabase.from("user_plans").upsert({ user_id: userId, plan: newPlan, updated_at: new Date().toISOString() });
+    await loadAdminUsers();
+  };
 
   const PLAN_LIMITS = { free: 3, pro: 20, agency: Infinity };
 
@@ -346,6 +375,72 @@ export default function App() {
     );
   }
 
+  // Panel de administración
+  if (showAdmin && isAdmin()) {
+    return (
+      <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
+        <div style={{ width: "100%", maxWidth: 800, padding: "28px 0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 38, height: 38, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.linen }}>C</div>
+            <div>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700 }}>Panel de Admin</div>
+              <div style={{ fontSize: 10, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase" }}>Gestión de usuarios</div>
+            </div>
+          </div>
+          <button onClick={() => setShowAdmin(false)} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 16px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Volver</button>
+        </div>
+
+        <div style={{ width: "100%", maxWidth: 800 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: C.linenMuted }}>{adminUsers.length} usuarios registrados</div>
+            <button onClick={loadAdminUsers} style={{ ...btn(), padding: "8px 16px", fontSize: 12 }}>↺ Actualizar</button>
+          </div>
+
+          {adminLoading ? (
+            <div style={{ textAlign: "center", padding: 40, color: C.linenMuted }}>Cargando...</div>
+          ) : adminUsers.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 40, color: C.linenMuted }}>No hay usuarios con plan asignado aún.</div>
+          ) : (
+            <div style={{ background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px 160px", padding: "12px 20px", borderBottom: `1px solid ${C.onyxBorder}`, fontSize: 11, color: C.linenMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                <span>Usuario</span>
+                <span>Plan actual</span>
+                <span>Análisis/mes</span>
+                <span>Cambiar plan</span>
+              </div>
+              {adminUsers.map((u) => (
+                <div key={u.user_id} style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px 160px", padding: "14px 20px", borderBottom: `1px solid ${C.onyxBorder}`, alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: C.linenDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.user_id}</div>
+                  <div>
+                    <span style={{ padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700, textTransform: "uppercase", background: u.plan === "agency" ? C.violetDim : u.plan === "pro" ? "rgba(123,53,212,0.3)" : C.onyxBorder, color: u.plan === "free" ? C.linenMuted : C.violetBright }}>
+                      {u.plan}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: C.linenDim }}>{u.analysisCount} / {PLAN_LIMITS[u.plan] === Infinity ? "∞" : PLAN_LIMITS[u.plan]}</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {["free", "pro", "agency"].map(p => (
+                      <button key={p} onClick={() => updateUserPlan(u.user_id, p)}
+                        style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${u.plan === p ? C.violet : C.onyxBorder}`, background: u.plan === p ? C.violetGlow : "transparent", color: u.plan === p ? C.violetBright : C.linenMuted, fontSize: 11, cursor: "pointer", fontWeight: u.plan === p ? 700 : 400 }}>
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop: 24, padding: "16px 20px", background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 12 }}>
+            <div style={{ fontSize: 12, color: C.linenMuted, marginBottom: 8 }}>💡 Para agregar un usuario nuevo al panel, primero debe loguearse en la app al menos una vez y hacer un análisis.</div>
+            <div style={{ fontSize: 12, color: C.linenMuted }}>Los planes se renuevan automáticamente el 1 de cada mes.</div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.08em", textAlign: "center", paddingBottom: 24, marginTop: 32 }}>CHROMA © 2025 · Laboratorio de Identidad Visual</div>
+      </div>
+    );
+  }
+
   // Pantalla de login obligatorio
   if (!user) {
     return (
@@ -410,6 +505,9 @@ export default function App() {
           )}
           {user ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {isAdmin() && (
+                <button onClick={() => { setShowAdmin(true); loadAdminUsers(); }} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>⚙️ Admin</button>
+              )}
               {canSeeHistory() && history.length > 0 && (
                 <button onClick={() => setShowHistory(!showHistory)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>
                   📋 Historial ({history.length})
