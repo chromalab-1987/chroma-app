@@ -177,6 +177,7 @@ export default function App() {
   const [history, setHistory]     = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState(null);
+  const [userPlan, setUserPlan] = useState("free");
   const [mode, setMode]           = useState("single");
   const [phase, setPhase]         = useState("upload");
   const [siteUrl, setSiteUrl]     = useState("");
@@ -200,10 +201,31 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const PLAN_LIMITS = { free: 3, pro: 20, agency: Infinity };
+
   const loadUsage = async (uid) => {
-    const { data } = await supabase.from("analyses").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+    // Cargar plan del usuario
+    const { data: planData } = await supabase.from("user_plans").select("plan").eq("user_id", uid).single();
+    const plan = planData?.plan || "free";
+    setUserPlan(plan);
+
+    // Cargar análisis del mes actual
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+    const { data } = await supabase.from("analyses").select("*").eq("user_id", uid).gte("created_at", startOfMonth.toISOString()).order("created_at", { ascending: false });
     setUsageCount(data?.length || 0);
-    setHistory(data || []);
+
+    // Historial completo (30 días para pro, ilimitado para agency, ninguno para free)
+    if (plan === "free") {
+      setHistory([]);
+    } else if (plan === "pro") {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const { data: histData } = await supabase.from("analyses").select("*").eq("user_id", uid).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false });
+      setHistory(histData || []);
+    } else {
+      const { data: histData } = await supabase.from("analyses").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+      setHistory(histData || []);
+    }
   };
 
   const saveAnalysis = async (r, url) => {
@@ -230,12 +252,17 @@ export default function App() {
     }, 400);
   };
 
-  const canAnalyze = () => !user || usageCount < FREE_LIMIT;
+  const planLimit = PLAN_LIMITS[userPlan] || 3;
+  const canAnalyze = () => usageCount < planLimit;
+  const canCompare = () => userPlan === "pro" || userPlan === "agency";
+  const canExportPDF = () => userPlan === "pro" || userPlan === "agency";
+  const canSeeHistory = () => userPlan === "pro" || userPlan === "agency";
 
   const analyze = async () => {
     if (!siteUrl) return;
     if (mode === "compare" && !siteUrl2) return;
     if (!canAnalyze()) return;
+    if (mode === "compare" && !canCompare()) return;
     setPhase("analyzing");
     startProgress();
     try {
@@ -375,15 +402,15 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {phase === "result" && mode === "single" && result && (
-            <button onClick={() => exportPDF(result, siteUrl)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>⬇ PDF</button>
-          )}
+          {phase === "result" && mode === "single" && result && canExportPDF() && (
+              <button onClick={() => exportPDF(result, siteUrl)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>⬇ PDF</button>
+            )}
           {phase === "result" && (
             <button onClick={reset} style={{ background: "transparent", border: `1px solid ${C.onyxBorder}`, borderRadius: 100, padding: "7px 16px", color: C.linenMuted, fontSize: 12, cursor: "pointer" }}>← Nuevo</button>
           )}
           {user ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {history.length > 0 && (
+              {canSeeHistory() && history.length > 0 && (
                 <button onClick={() => setShowHistory(!showHistory)} style={{ ...btn(true), padding: "7px 14px", fontSize: 12 }}>
                   📋 Historial ({history.length})
                 </button>
@@ -392,7 +419,8 @@ export default function App() {
                 <div style={{ width: 24, height: 24, borderRadius: "50%", background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>
                   {user.email[0].toUpperCase()}
                 </div>
-                <span style={{ fontSize: 12, color: C.linenDim }}>{usageCount}/{FREE_LIMIT} análisis</span>
+                <span style={{ fontSize: 12, color: C.linenDim }}>{usageCount}/{planLimit === Infinity ? "∞" : planLimit}</span>
+                <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 100, background: userPlan === "agency" ? C.violetDim : userPlan === "pro" ? "rgba(123,53,212,0.3)" : C.onyxBorder, color: userPlan === "free" ? C.linenMuted : C.violetBright, fontWeight: 700, textTransform: "uppercase" }}>{userPlan}</span>
                 <button onClick={logout} style={{ background: "none", border: "none", color: C.linenMuted, fontSize: 11, cursor: "pointer" }}>Salir</button>
               </div>
             </div>
@@ -423,19 +451,33 @@ export default function App() {
       )}
 
       {/* LIMITE ALCANZADO */}
-      {user && usageCount >= FREE_LIMIT && phase === "upload" && (
+      {usageCount >= planLimit && phase === "upload" && (
         <div style={{ ...card, textAlign: "center", borderColor: C.violet }}>
           <div style={{ fontSize: 28, marginBottom: 12 }}>🔒</div>
-          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Límite del plan gratuito alcanzado</div>
-          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 20, lineHeight: 1.7 }}>
-            Usaste tus {FREE_LIMIT} análisis gratuitos. Próximamente podrás suscribirte para análisis ilimitados.
+          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+            {userPlan === "free" ? "Límite del plan gratuito alcanzado" : `Límite del plan ${userPlan} alcanzado`}
           </div>
-          <div style={{ fontSize: 12, color: C.linenMuted }}>¿Querés más análisis? Contactanos en <span style={{ color: C.violetBright }}>hola@chromalab.com.ar</span></div>
+          <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 20, lineHeight: 1.7 }}>
+            {userPlan === "free" ? `Usaste tus ${planLimit} análisis gratuitos este mes. Contactanos para obtener más.` : `Usaste tus ${planLimit} análisis este mes. Tu cuota se renueva el 1 del próximo mes.`}
+          </div>
+          {userPlan === "free" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ padding: "16px", background: C.onyx, border: `1px solid ${C.violet}`, borderRadius: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.violetBright, marginBottom: 4 }}>Plan Pro — $9/mes</div>
+                <div style={{ fontSize: 12, color: C.linenMuted }}>20 análisis · Comparaciones · PDF · Historial 30 días</div>
+              </div>
+              <div style={{ padding: "16px", background: C.onyx, border: `1px solid ${C.onyxBorder}`, borderRadius: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.linen, marginBottom: 4 }}>Plan Agency — $29/mes</div>
+                <div style={{ fontSize: 12, color: C.linenMuted }}>Análisis ilimitados · Todo lo del Pro · Historial ilimitado</div>
+              </div>
+              <div style={{ fontSize: 12, color: C.linenMuted, marginTop: 8 }}>Contactanos en <span style={{ color: C.violetBright }}>hola@chromalab.com.ar</span></div>
+            </div>
+          )}
         </div>
       )}
 
       {/* UPLOAD */}
-      {phase === "upload" && (!user || usageCount < FREE_LIMIT) && (
+      {phase === "upload" && usageCount < planLimit && (
         <div style={card}>
           <div style={{ marginBottom: 24 }}>
             <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8, lineHeight: 1.2 }}>Analizá tu identidad visual</h1>
@@ -447,15 +489,17 @@ export default function App() {
             )}
             {user && (
               <div style={{ marginTop: 12, padding: "10px 14px", background: C.onyx, border: `1px solid ${C.onyxBorder}`, borderRadius: 10, fontSize: 12, color: C.linenMuted }}>
-                Análisis disponibles: <strong style={{ color: usageCount >= FREE_LIMIT - 1 ? C.warning : C.ok }}>{FREE_LIMIT - usageCount} de {FREE_LIMIT}</strong>
+                Análisis disponibles este mes: <strong style={{ color: usageCount >= planLimit - 1 ? C.warning : C.ok }}>{planLimit === Infinity ? "∞" : planLimit - usageCount} de {planLimit === Infinity ? "∞" : planLimit}</strong>
+                <span style={{ marginLeft: 8, padding: "2px 7px", borderRadius: 100, background: userPlan === "agency" ? C.violetDim : userPlan === "pro" ? "rgba(123,53,212,0.3)" : C.onyxBorder, color: userPlan === "free" ? C.linenMuted : C.violetBright, fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>{userPlan}</span>
               </div>
             )}
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20, background: C.onyx, borderRadius: 12, padding: 4 }}>
             {["single", "compare"].map(m => (
-              <button key={m} onClick={() => setMode(m)} style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", background: mode === m ? C.onyxLight : "transparent", color: mode === m ? C.linen : C.linenMuted, fontSize: 13, fontWeight: mode === m ? 600 : 400, cursor: "pointer", transition: "all 0.2s" }}>
-                {m === "single" ? "Análisis simple" : "Comparar sitios"}
+              <button key={m} onClick={() => canCompare() || m === "single" ? setMode(m) : null}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", background: mode === m ? C.onyxLight : "transparent", color: mode === m ? C.linen : (!canCompare() && m === "compare") ? C.linenMuted : C.linenMuted, fontSize: 13, fontWeight: mode === m ? 600 : 400, cursor: (!canCompare() && m === "compare") ? "not-allowed" : "pointer", transition: "all 0.2s", opacity: (!canCompare() && m === "compare") ? 0.4 : 1 }}>
+                {m === "single" ? "Análisis simple" : `Comparar sitios ${!canCompare() ? "🔒" : ""}`}
               </button>
             ))}
           </div>
