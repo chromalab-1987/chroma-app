@@ -112,16 +112,28 @@ export default async function handler(req, res) {
   const { siteUrl } = req.body;
   if (!siteUrl) return res.status(400).json({ error: "Falta siteUrl." });
 
+  console.log("[analyze] Request recibido para:", siteUrl);
+
   try {
     // 1. Captura de página completa
+    console.log("[analyze] Llamando a ScreenshotOne...");
     const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=75&viewport_width=1280&viewport_height=900&full_page=true`;
 
     const screenshotRes = await fetch(screenshotUrl);
-    if (!screenshotRes.ok) throw new Error("No se pudo capturar la página web.");
+    console.log("[analyze] ScreenshotOne status:", screenshotRes.status);
+
+    if (!screenshotRes.ok) {
+      const screenshotError = await screenshotRes.text();
+      console.error("[analyze] ScreenshotOne error body:", screenshotError);
+      throw new Error(`ScreenshotOne falló (${screenshotRes.status}): ${screenshotError}`);
+    }
+
     const arrayBuffer = await screenshotRes.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
+    console.log("[analyze] Screenshot OK, tamaño base64:", base64.length, "chars");
 
     // 2. Analizar con Gemini
+    console.log("[analyze] Llamando a Gemini...");
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
 
     const response = await fetch(geminiUrl, {
@@ -142,21 +154,35 @@ export default async function handler(req, res) {
       }),
     });
 
+    console.log("[analyze] Gemini status:", response.status);
     const data = await response.json();
 
     if (!response.ok) {
-      const errMsg = data.error?.message || "Error de Gemini.";
-      return res.status(500).json({ error: errMsg });
+      console.error("[analyze] Gemini error:", JSON.stringify(data.error));
+      return res.status(500).json({ error: data.error?.message || "Error de Gemini.", detail: data.error });
     }
 
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log("[analyze] Gemini raw response (primeros 300 chars):", raw.slice(0, 300));
+
+    if (!raw) {
+      console.error("[analyze] Gemini devolvió respuesta vacía. Finish reason:", data.candidates?.[0]?.finishReason);
+      throw new Error(`Gemini devolvió respuesta vacía. Reason: ${data.candidates?.[0]?.finishReason}`);
+    }
+
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
+    if (!match) {
+      console.error("[analyze] No se encontró JSON en la respuesta. Raw completo:", raw);
+      throw new Error("No se pudo extraer JSON de la respuesta.");
+    }
+
     const parsed = JSON.parse(match[0]);
+    console.log("[analyze] JSON parseado OK. Score:", parsed.score);
 
     return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64}` });
 
   } catch (e) {
+    console.error("[analyze] ERROR FINAL:", e.message, e.stack);
     return res.status(500).json({ error: "Error interno: " + e.message });
   }
 }
