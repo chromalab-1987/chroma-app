@@ -87,20 +87,37 @@ function CategoryBar({ label, value, compact = false }) {
 }
 
 function IssueTag({ issue }) {
-  const isError = issue.severity === "error";
+  const isCritical = issue.severity === "critical" || issue.severity === "error";
+  const isMinor = issue.severity === "minor";
+  const bg = isCritical ? "rgba(232,69,60,0.07)" : isMinor ? "rgba(60,184,122,0.07)" : "rgba(232,155,60,0.07)";
+  const border = isCritical ? "rgba(232,69,60,0.2)" : isMinor ? "rgba(60,184,122,0.2)" : "rgba(232,155,60,0.2)";
+  const icon = isCritical ? "❌" : isMinor ? "💡" : "⚠️";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: isError ? "rgba(232,69,60,0.07)" : "rgba(232,155,60,0.07)", border: `1px solid ${isError ? "rgba(232,69,60,0.2)" : "rgba(232,155,60,0.2)"}`, borderRadius: 10, marginBottom: 8 }}>
-      <span style={{ fontSize: 13 }}>{isError ? "❌" : "⚠️"}</span>
-      <span style={{ fontSize: 12, color: C.linenDim, lineHeight: 1.5 }}>{issue.label}</span>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", background: bg, border: `1px solid ${border}`, borderRadius: 10, marginBottom: 8 }}>
+      <span style={{ fontSize: 13, marginTop: 1 }}>{icon}</span>
+      <div>
+        <span style={{ fontSize: 12, color: C.linenDim, lineHeight: 1.5 }}>{issue.label}</span>
+        {issue.impact && <div style={{ fontSize: 10, color: C.linenMuted, marginTop: 3, textTransform: "uppercase", letterSpacing: "0.08em" }}>{issue.impact.replace(/_/g, " ")}</div>}
+      </div>
     </div>
   );
 }
 
 function RecoCard({ text, index }) {
+  // Soporta tanto string como objeto {priority, action, why}
+  const isObj = text && typeof text === "object";
+  const action = isObj ? text.action : text;
+  const why = isObj ? text.why : null;
+  const priority = isObj ? text.priority : null;
+  const priorityColor = priority === "high" ? C.danger : priority === "medium" ? C.warning : C.linenMuted;
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 14px", background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderLeft: `3px solid ${C.violet}`, borderRadius: "0 10px 10px 0", marginBottom: 8 }}>
-      <div style={{ minWidth: 22, height: 22, background: C.violetDim, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: C.violetBright }}>{index + 1}</div>
-      <span style={{ fontSize: 12, color: C.linenDim, lineHeight: 1.6 }}>{text}</span>
+      <div style={{ minWidth: 22, height: 22, background: C.violetDim, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: C.violetBright, flexShrink: 0 }}>{index + 1}</div>
+      <div>
+        {priority && <div style={{ fontSize: 10, color: priorityColor, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3, fontWeight: 700 }}>{priority} priority</div>}
+        <div style={{ fontSize: 12, color: C.linenDim, lineHeight: 1.6 }}>{action}</div>
+        {why && <div style={{ fontSize: 11, color: C.linenMuted, marginTop: 4, lineHeight: 1.5, fontStyle: "italic" }}>{why}</div>}
+      </div>
     </div>
   );
 }
@@ -664,6 +681,40 @@ export default function App() {
             <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 20 }}>Breakdown por Categoría</div>
             {Object.entries(result.breakdown).map(([k, v]) => <CategoryBar key={k} label={`${catLabels[k] || k}  ·  ${catWeights[k]}% peso`} value={v} />)}
           </div>
+
+          {/* Primera impresión */}
+          {result.first_impression && (
+            <div style={{ ...card, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Primera impresión (5 segundos)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+                {[
+                  { label: "¿Qué es?", value: result.first_impression.what },
+                  { label: "¿Para quién?", value: result.first_impression.who },
+                  { label: "¿Qué hacer?", value: result.first_impression.action },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ padding: "12px 14px", background: C.onyx, borderRadius: 10, border: `1px solid ${C.onyxBorder}` }}>
+                    <div style={{ fontSize: 10, color: C.linenMuted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: C.linenDim, lineHeight: 1.5 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: C.linenMuted }}>Veredicto:</span>
+                <span style={{ padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700, textTransform: "uppercase", background: result.first_impression.verdict === "claro" ? "rgba(60,184,122,0.15)" : "rgba(232,69,60,0.15)", color: result.first_impression.verdict === "claro" ? C.ok : C.danger }}>
+                  {result.first_impression.verdict}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Brand gap */}
+          {result.brand_gap && result.brand_gap !== "ninguna detectada" && (
+            <div style={{ ...card, marginBottom: 16, borderColor: "rgba(232,155,60,0.3)" }}>
+              <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10 }}>Brecha de marca detectada</div>
+              <div style={{ fontSize: 13, color: C.linenDim, lineHeight: 1.7 }}>⚠️ {result.brand_gap}</div>
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
             <div style={card}>
               <div style={{ fontSize: 11, color: C.linenMuted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Problemas detectados</div>
