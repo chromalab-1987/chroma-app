@@ -761,9 +761,27 @@ export default function App() {
               {result.recommendations?.map((r, i) => <RecoCard key={i} text={r} index={i} />)}
             </div>
           </div>
-          <div style={{ ...card, textAlign: "center", marginBottom: 40 }}>
+          <div style={{ ...card, textAlign: "center", marginBottom: 16 }}>
             <div style={{ fontSize: 13, color: C.linenMuted, marginBottom: 16 }}>¿Aplicaste mejoras? Analizá la nueva versión para ver tu progreso.</div>
             <button onClick={reset} style={{ ...btn(), padding: "13px 32px" }} onMouseEnter={e => e.target.style.transform = "translateY(-1px)"} onMouseLeave={e => e.target.style.transform = "translateY(0)"}>↺ Re-analizar</button>
+          </div>
+
+          {/* CTA Especialista */}
+          <div style={{ ...card, marginBottom: 40, background: `linear-gradient(135deg, ${C.violetDim}33, ${C.onyxLight})`, border: `1px solid ${C.violet}55`, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: C.violetBright, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12 }}>Análisis estratégico profundo</div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, color: C.linen, marginBottom: 10, lineHeight: 1.3 }}>
+              {result.score < 65 ? "Tu identidad visual necesita intervención estratégica." : "Tu marca tiene base sólida. Llevala al siguiente nivel."}
+            </div>
+            <div style={{ fontSize: 13, color: C.linenDim, lineHeight: 1.7, marginBottom: 24, maxWidth: 480, margin: "0 auto 24px" }}>
+              {result.score < 65
+                ? "Los problemas detectados en este reporte impactan directamente en tus conversiones y en cómo te perciben tus clientes. Un especialista puede transformar estos hallazgos en un plan de acción concreto."
+                : "Este reporte es el punto de partida. Una sesión con un especialista te permite profundizar en cada hallazgo y definir una estrategia de identidad visual alineada a tus objetivos de negocio."}
+            </div>
+            <a href="https://calendly.com/labid-chroma/30min" target="_blank" rel="noopener noreferrer"
+              style={{ display: "inline-block", padding: "14px 36px", background: `linear-gradient(135deg, ${C.violet}, ${C.violetBright})`, borderRadius: 12, color: C.linen, fontSize: 14, fontWeight: 700, textDecoration: "none", letterSpacing: "0.02em" }}>
+              Agendar auditoría con especialista →
+            </a>
+            <div style={{ fontSize: 11, color: C.linenMuted, marginTop: 12 }}>30 minutos · Google Meet · Sin costo</div>
           </div>
         </div>
       )}
