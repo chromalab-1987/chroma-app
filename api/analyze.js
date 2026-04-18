@@ -24,17 +24,39 @@ TIPOGRAFÍA:
 - ¿Hay jerarquía clara entre títulos, subtítulos y cuerpo?
 - ¿El tamaño, peso y espaciado son consistentes en toda la página?
 - ¿La tipografía refuerza o contradice el posicionamiento de la marca?
+- ¿El texto dentro de los botones está centrado vertical y horizontalmente, o el label aparece corrido hacia arriba, abajo o a un costado?
+- ¿Los títulos de sección usan la misma alineación (izquierda / centrada) en toda la página, o cambia entre secciones sin intención?
+- ¿El interlineado (leading) es proporcional al tamaño del tipo, o hay textos que se solapan / respiran demasiado?
+- ¿Hay orphans visibles (una palabra sola en la última línea de un párrafo)?
+- ¿Las líneas de texto tienen un largo razonable (45–75 caracteres) o son demasiado anchas y dificultan la lectura?
 
 COMPOSICIÓN:
 - ¿Hay una grilla visible y consistente?
 - ¿El espaciado entre elementos es uniforme?
 - ¿Hay elementos que rompen la alineación o generan ruido visual?
 - ¿El uso del espacio en blanco es intencional o accidental?
+- ¿El padding interno de los botones es simétrico izquierda/derecha, o algún botón parece más apretado que otro?
+- ¿Las columnas de texto en secciones paralelas (ej: tres columnas de features) terminan a la misma altura, o las cabeceras de distinto largo rompen la alineación?
+- ¿Los elementos que deberían estar centrados en pantalla lo están realmente, o tienen un offset visual sutil?
+- ¿El margen entre el borde del viewport y el contenido es consistente en todas las secciones?
+
+MICRO-DETALLES DE COMPONENTES:
+Inspeccioná cada tipo de componente de forma granular:
+- BOTONES: ¿El label está centrado dentro del botón (vertical y horizontal)? ¿El padding es simétrico? ¿El tamaño de fuente y el peso son idénticos en todos los botones de la página? ¿Hay algún botón donde el texto se vea recortado o con overflow?
+- TÍTULOS (H1, H2, H3): ¿Están alineados con la grilla o flotan libremente? ¿El espacio debajo de cada título es consistente con el elemento que le sigue? ¿La alineación (izquierda / centrada) es la misma para todos los títulos del mismo nivel jerárquico?
+- CTAs: ¿El texto del CTA principal tiene exactamente el mismo tamaño y peso en todas sus apariciones? ¿Hay CTAs secundarios que compiten por peso tipográfico con el primario?
+- ÍCONOS + TEXTO: ¿Los íconos están alineados al centro óptico del texto que los acompaña, o alguno sube o baja respecto a la línea base del label?
+- TARJETAS / CARDS: ¿El padding interno es uniforme en todas las tarjetas? ¿Los títulos dentro de las cards arrancan siempre desde la misma posición relativa?
+- BADGES / TAGS / CHIPS: ¿Usan el mismo tamaño de fuente y padding en todas sus apariciones?
+- LISTAS Y BULLETS: ¿La sangría es uniforme? ¿El texto de cada ítem está alineado correctamente o algún ítem rompe la columna?
 
 CONSISTENCIA Y SISTEMA DE DISEÑO:
 - ¿Los botones, íconos e imágenes tienen tratamiento visual coherente?
 - ¿Se percibe un sistema de diseño o parece armado por partes?
 - ¿La marca se ve igual de arriba a abajo o pierde coherencia al scrollear?
+- ¿Todos los botones primarios tienen el mismo alto, border-radius y peso tipográfico? Comparalos uno a uno.
+- ¿Los botones secundarios u outlined tienen el mismo grosor de borde en toda la página?
+- ¿Los números o datos destacados (métricas, estadísticas) usan siempre la misma familia y peso tipográfico?
 
 JERARQUÍA Y FLUJO DE CONVERSIÓN:
 - ¿El ojo sabe dónde ir primero, segundo y tercero?
@@ -52,10 +74,10 @@ CONFIANZA Y PERCEPCIÓN DE PRECIO:
 
 CRITERIOS DE PUNTUACIÓN:
 - color (20%): paleta cromática, contraste, coherencia y alineación con el posicionamiento
-- typography (20%): legibilidad, jerarquía tipográfica, consistencia
-- composition (20%): grilla, espaciado, uso del espacio en blanco
-- consistency (25%): sistema de diseño, coherencia entre todos los elementos
-- hierarchy (15%): flujo visual, CTA, arquitectura de conversión
+- typography (25%): legibilidad, jerarquía tipográfica, consistencia, alineación de texto en componentes
+- composition (20%): grilla, espaciado, uso del espacio en blanco, simetría de componentes
+- consistency (25%): sistema de diseño, coherencia de botones/badges/cards/íconos entre sí y a lo largo de la página
+- hierarchy (10%): flujo visual, CTA, arquitectura de conversión
 
 ---
 
