@@ -145,7 +145,7 @@ function exportPDF(result, siteUrl) {
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reporte Chroma — ${siteUrl}</title>
   <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;padding:40px;}
   .header{display:flex;align-items:center;gap:16px;margin-bottom:32px;border-bottom:2px solid #7B35D4;padding-bottom:20px;}
-  .logo{width:44px;height:44px;background:linear-gradient(135deg,#4A1D8C,#9B55F4);border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:20px;}
+  .logo{width:44px;height:44px;border-radius:12px;overflow:hidden;}
   .score-section{display:flex;align-items:center;gap:24px;background:#f8f8fc;border-radius:16px;padding:24px;margin-bottom:24px;}
   .score-circle{width:100px;height:100px;border-radius:50%;border:8px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
   .section{background:#f8f8fc;border-radius:12px;padding:20px;margin-bottom:20px;}
@@ -159,7 +159,7 @@ function exportPDF(result, siteUrl) {
   .screenshot{width:100%;border-radius:8px;margin-bottom:24px;border:1px solid #e0e0e0;}
   .footer{margin-top:32px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:16px;}
   </style></head><body>
-  <div class="header"><div class="logo">C</div><div><h1 style="font-size:22px;font-weight:700;">Chroma</h1><p style="font-size:11px;color:#888;letter-spacing:.1em;text-transform:uppercase;">Laboratorio de Identidad Visual</p></div></div>
+  <div class="header"><img src="/logo.png" style="width:44px;height:44px;border-radius:12px;object-fit:cover;" alt="Chroma" /><div><h1 style="font-size:22px;font-weight:700;">Chroma</h1><p style="font-size:11px;color:#888;letter-spacing:.1em;text-transform:uppercase;">Laboratorio de Identidad Visual</p></div></div>
   <div style="font-size:13px;color:#7B35D4;margin-bottom:24px;">🔗 ${siteUrl}</div>
   ${result.screenshot ? `<img src="${result.screenshot}" class="screenshot" alt="Captura" />` : ""}
   <div class="score-section">
@@ -384,7 +384,7 @@ export default function App() {
       <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
         <div style={{ width: "100%", maxWidth: 660, padding: "28px 0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 32 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 38, height: 38, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.linen }}>C</div>
+            <img src="/logo.png" alt="Chroma" style={{ width: 38, height: 38, borderRadius: 11, objectFit: "cover" }} />
             <div>
               <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700 }}>Chroma</div>
               <div style={{ fontSize: 10, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase" }}>Laboratorio de Identidad</div>
@@ -435,7 +435,7 @@ export default function App() {
       <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
         <div style={{ width: "100%", maxWidth: 800, padding: "28px 0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 32 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 38, height: 38, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.linen }}>C</div>
+            <img src="/logo.png" alt="Chroma" style={{ width: 38, height: 38, borderRadius: 11, objectFit: "cover" }} />
             <div>
               <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700 }}>Panel de Admin</div>
               <div style={{ fontSize: 10, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase" }}>Gestión de usuarios</div>
@@ -500,7 +500,7 @@ export default function App() {
     return (
       <div style={{ background: C.onyx, minHeight: "100vh", fontFamily: FONT_BODY, color: C.linen, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
         <div style={{ width: "100%", maxWidth: 480, textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900, color: C.linen, boxShadow: `0 0 32px ${C.violetGlow}`, margin: "0 auto 24px" }}>C</div>
+          <img src="/logo.png" alt="Chroma" style={{ width: 64, height: 64, borderRadius: 18, objectFit: "cover", boxShadow: `0 0 32px ${C.violetGlow}`, margin: "0 auto 24px" }} />
           <div style={{ fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8 }}>Chroma</div>
           <div style={{ fontSize: 12, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 32 }}>Laboratorio de Identidad Visual</div>
           <div style={{ background: C.onyxLight, border: `1px solid ${C.onyxBorder}`, borderRadius: 20, padding: "32px 28px", marginBottom: 20 }}>
@@ -544,7 +544,7 @@ export default function App() {
       {/* HEADER */}
       <div style={{ width: "100%", maxWidth, padding: "28px 0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.onyxBorder}`, marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, background: `linear-gradient(135deg, ${C.violetDim}, ${C.violetBright})`, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.linen, boxShadow: `0 0 18px ${C.violetGlow}` }}>C</div>
+          <img src="/logo.png" alt="Chroma" style={{ width: 38, height: 38, borderRadius: 11, objectFit: "cover", boxShadow: `0 0 18px ${C.violetGlow}` }} />
           <div>
             <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em" }}>Chroma</div>
             <div style={{ fontSize: 10, color: C.linenMuted, letterSpacing: "0.14em", textTransform: "uppercase", marginTop: -2 }}>Laboratorio de Identidad</div>
