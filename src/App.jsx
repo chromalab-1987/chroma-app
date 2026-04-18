@@ -309,6 +309,13 @@ export default function App() {
   const loginWithGoogle = () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
   const logout = () => supabase.auth.signOut();
 
+  const normalizeUrl = (url) => {
+    const trimmed = url.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return 'https://' + trimmed;
+  };
+
   const reset = () => {
     setPhase("upload"); setSiteUrl(""); setSiteUrl2("");
     setResult(null); setResult2(null); setErrMsg(""); setProgress(0);
@@ -332,6 +339,10 @@ export default function App() {
   const analyze = async () => {
     if (!siteUrl) return;
     if (mode === "compare" && !siteUrl2) return;
+    const normalizedUrl = normalizeUrl(siteUrl);
+    const normalizedUrl2 = normalizeUrl(siteUrl2);
+    setSiteUrl(normalizedUrl);
+    if (mode === "compare") setSiteUrl2(normalizedUrl2);
     if (!canAnalyze()) return;
     if (mode === "compare" && !canCompare()) return;
     setPhase("analyzing");
@@ -645,20 +656,20 @@ export default function App() {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <input type="text" placeholder="https://ejemplo.com" value={siteUrl} onChange={e => setSiteUrl(e.target.value)}
+            <input type="text" placeholder="ejemplo.com" value={siteUrl} onChange={e => setSiteUrl(e.target.value)}
               style={{ width: "100%", padding: "14px 16px", background: C.onyx, border: `1px solid ${siteUrl ? C.violet : C.onyxBorder}`, borderRadius: 12, color: C.linen, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: FONT_BODY, transition: "border 0.2s" }} />
           </div>
 
           {mode === "compare" && (
             <div style={{ marginBottom: 12 }}>
-              <input type="text" placeholder="https://competidor.com" value={siteUrl2} onChange={e => setSiteUrl2(e.target.value)}
+              <input type="text" placeholder="competidor.com" value={siteUrl2} onChange={e => setSiteUrl2(e.target.value)}
                 style={{ width: "100%", padding: "14px 16px", background: C.onyx, border: `1px solid ${siteUrl2 ? C.violet : C.onyxBorder}`, borderRadius: 12, color: C.linen, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: FONT_BODY, transition: "border 0.2s" }} />
             </div>
           )}
 
           <button onClick={analyze}
-            disabled={!siteUrl.startsWith("http") || (mode === "compare" && !siteUrl2.startsWith("http"))}
-            style={{ ...btn(), width: "100%", padding: 16, marginTop: 4, opacity: (siteUrl.startsWith("http") && (mode === "single" || siteUrl2.startsWith("http"))) ? 1 : 0.4 }}
+            disabled={!siteUrl.trim() || (mode === "compare" && !siteUrl2.trim())}
+            style={{ ...btn(), width: "100%", padding: 16, marginTop: 4, opacity: (siteUrl.trim() && (mode === "single" || siteUrl2.trim())) ? 1 : 0.4 }}
             onMouseEnter={e => e.target.style.transform = "translateY(-1px)"}
             onMouseLeave={e => e.target.style.transform = "translateY(0)"}>
             {mode === "compare" ? "Comparar sitios →" : "Analizar identidad visual →"}
