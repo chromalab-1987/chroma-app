@@ -173,11 +173,13 @@ function exportPDF(result, siteUrl) {
   ${Object.entries(result.breakdown).map(([k,v])=>`<div class="bar-row"><div class="bar-label"><span>${catLabels[k]||k} · ${catWeights[k]}% peso</span><span style="color:${col(v)};font-weight:700;">${v}</span></div><div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${col(v)};"></div></div></div>`).join("")}
   </div>
   <div class="two-col">
+    ${result.first_impression?`<div class="section" style="grid-column:1/-1"><div class="section-title">Primera impresión (5 segundos)</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;">${[{l:"¿Qué es?",v:result.first_impression.what},{l:"¿Para quién?",v:result.first_impression.who},{l:"¿Qué hacer?",v:result.first_impression.action}].map(x=>`<div style="padding:10px;background:#f0f0f8;border-radius:8px;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">${x.l}</div><div style="font-size:12px;">${x.v}</div></div>`).join("")}</div><div style="font-size:12px;">Veredicto: <strong style="color:${result.first_impression.verdict==="claro"?"#3CB87A":"#E8453C"}">${result.first_impression.verdict}</strong></div></div>`:""}
+    ${result.brand_gap&&result.brand_gap!=="ninguna detectada"?`<div class="section" style="grid-column:1/-1;border-left:3px solid #E89B3C;"><div class="section-title">Brecha de marca detectada</div><div style="font-size:13px;">⚠️ ${result.brand_gap}</div></div>`:""}
     <div class="section"><div class="section-title">Problemas detectados</div>
     ${result.issues?.length>0?result.issues.map(i=>`<div class="issue" style="background:${i.severity==="error"?"rgba(232,69,60,0.07)":"rgba(232,155,60,0.07)"};border:1px solid ${i.severity==="error"?"rgba(232,69,60,0.2)":"rgba(232,155,60,0.2)"};">${i.severity==="error"?"❌":"⚠️"} ${i.label}</div>`).join(""):"<p style='font-size:12px;color:#888;'>Sin problemas críticos ✓</p>"}
     </div>
     <div class="section"><div class="section-title">Recomendaciones</div>
-    ${result.recommendations?.map((r,i)=>`<div class="reco"><div class="reco-num">${i+1}</div><span>${r}</span></div>`).join("")}
+    ${result.recommendations?.map((r,i)=>{const isObj=r&&typeof r==="object";const action=isObj?r.action:r;const why=isObj?r.why:null;const priority=isObj?r.priority:null;const pColor=priority==="high"?"#E8453C":priority==="medium"?"#E89B3C":"#888";return`<div class="reco"><div class="reco-num">${i+1}</div><div>${priority?`<div style="font-size:10px;color:${pColor};text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:3px;">${priority} priority</div>`:""}${action}${why?`<div style="font-size:11px;color:#888;margin-top:4px;font-style:italic;">${why}</div>`:""}</div></div>`}).join("")}
     </div>
   </div>
   <div class="footer">Reporte generado por Chroma · ${new Date().toLocaleDateString("es-AR")}</div>
@@ -255,21 +257,21 @@ export default function App() {
     const plan = planData?.plan || "free";
     setUserPlan(plan);
 
-    // Cargar análisis del mes actual
+    // Cargar conteo del mes actual (separado del historial)
     const startOfMonth = new Date();
     startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
-    const { data } = await supabase.from("analyses").select("*").eq("user_id", uid).gte("created_at", startOfMonth.toISOString()).order("created_at", { ascending: false });
-    setUsageCount(data?.length || 0);
+    const { count } = await supabase.from("analyses").select("*", { count: "exact", head: true }).eq("user_id", uid).gte("created_at", startOfMonth.toISOString());
+    setUsageCount(count || 0);
 
-    // Historial completo (30 días para pro, ilimitado para agency, ninguno para free)
+    // Historial completo según plan
     if (plan === "free") {
       setHistory([]);
     } else if (plan === "pro") {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const { data: histData } = await supabase.from("analyses").select("*").eq("user_id", uid).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false });
+      const { data: histData } = await supabase.from("analyses").select("*").eq("user_id", uid).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(500);
       setHistory(histData || []);
     } else {
-      const { data: histData } = await supabase.from("analyses").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+      const { data: histData } = await supabase.from("analyses").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(500);
       setHistory(histData || []);
     }
   };
