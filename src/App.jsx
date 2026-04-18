@@ -278,8 +278,31 @@ export default function App() {
 
   const saveAnalysis = async (r, url) => {
     if (!user) return;
-    const { screenshot, ...rest } = r;
-    await supabase.from("analyses").insert({ user_id: user.id, site_url: url, ...rest, screenshot: screenshot || null });
+    try {
+      const row = {
+        user_id: user.id,
+        site_url: url,
+        score: r.score,
+        breakdown: r.breakdown,
+        issues: r.issues,
+        recommendations: r.recommendations,
+        summary: r.summary,
+        screenshot: r.screenshot || null,
+        first_impression: r.first_impression || null,
+        brand_gap: r.brand_gap || null,
+      };
+      const { error } = await supabase.from("analyses").insert(row);
+      if (error) {
+        if (error.message?.includes("first_impression") || error.message?.includes("brand_gap")) {
+          const { score, breakdown, issues, recommendations, summary, screenshot } = r;
+          await supabase.from("analyses").insert({ user_id: user.id, site_url: url, score, breakdown, issues, recommendations, summary, screenshot: screenshot || null });
+        } else {
+          console.error("saveAnalysis error:", error.message);
+        }
+      }
+    } catch (e) {
+      console.error("saveAnalysis exception:", e.message);
+    }
     await loadUsage(user.id);
   };
 
