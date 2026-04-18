@@ -188,9 +188,27 @@ export default async function handler(req, res) {
     }
 
     const raw = data.choices?.[0]?.message?.content || "";
+
+    // Intentar extraer JSON de la respuesta
+    let parsed = null;
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
-    const parsed = JSON.parse(match[0]);
+    if (match) {
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch (e) {
+        // JSON malformado — intentar limpiar y re-parsear
+        const cleaned = match[0]
+          .replace(/,\s*}/g, "}")
+          .replace(/,\s*]/g, "]");
+        try { parsed = JSON.parse(cleaned); } catch (_) {}
+      }
+    }
+
+    if (!parsed) {
+      // Si Groq devolvió error de rate limit u otro mensaje
+      const errDetail = data.choices?.[0]?.finish_reason || raw.slice(0, 200);
+      throw new Error(`No se pudo extraer JSON de la respuesta. Detalle: ${errDetail}`);
+    }
 
     return res.status(200).json({ ...parsed, screenshot: `data:image/jpeg;base64,${base64}` });
 
