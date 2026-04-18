@@ -354,7 +354,8 @@ export default function App() {
       }).then(r => r.json()).then(j => { if (j.error) throw new Error(j.error); return j; });
 
       if (mode === "compare") {
-        const [r1, r2] = await Promise.all([fetchAnalysis(normalizedUrl), fetchAnalysis(normalizedUrl2)]);
+        const r1 = await fetchAnalysis(normalizedUrl);
+        const r2 = await fetchAnalysis(normalizedUrl2);
         clearInterval(timerRef.current); setProgress(100);
         await new Promise(r => setTimeout(r, 400));
         setResult(r1); setResult2(r2);
