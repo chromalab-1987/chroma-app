@@ -103,10 +103,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
   const screenshotKey = process.env.SCREENSHOT_API_KEY;
 
-  if (!geminiKey) return res.status(500).json({ error: "GEMINI_API_KEY no configurada." });
+  if (!groqKey) return res.status(500).json({ error: "GROQ_API_KEY no configurada." });
   if (!screenshotKey) return res.status(500).json({ error: "SCREENSHOT_API_KEY no configurada." });
 
   const { siteUrl } = req.body;
@@ -117,38 +117,52 @@ export default async function handler(req, res) {
     const screenshotUrl = `https://api.screenshotone.com/take?access_key=${screenshotKey}&url=${encodeURIComponent(siteUrl)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&timeout=60&response_type=by_format&image_quality=75&viewport_width=1280&viewport_height=900&full_page=true`;
 
     const screenshotRes = await fetch(screenshotUrl);
-    if (!screenshotRes.ok) throw new Error("No se pudo capturar la página web.");
+    if (!screenshotRes.ok) {
+      const errText = await screenshotRes.text();
+      throw new Error(`ScreenshotOne falló (${screenshotRes.status}): ${errText}`);
+    }
     const arrayBuffer = await screenshotRes.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-    // 2. Analizar con Gemini
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-
-    const response = await fetch(geminiUrl, {
+    // 2. Analizar con Groq (vision)
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${groqKey}`,
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: PROMPT },
-            { inline_data: { mime_type: "image/jpeg", data: base64 } },
-          ],
-        }],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 2048,
-        },
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64}`,
+                },
+              },
+              {
+                type: "text",
+                text: PROMPT,
+              },
+            ],
+          },
+        ],
+        temperature: 0.4,
+        max_tokens: 2048,
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      const errMsg = data.error?.message || "Error de Gemini.";
+      const errMsg = data.error?.message || "Error de Groq.";
       return res.status(500).json({ error: errMsg });
     }
 
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const raw = data.choices?.[0]?.message?.content || "";
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("No se pudo extraer JSON de la respuesta.");
     const parsed = JSON.parse(match[0]);
