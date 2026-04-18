@@ -5,6 +5,15 @@ Estás viendo una captura de pantalla COMPLETA de un sitio web (toda la página 
 CRITERIO DE SCORING ESTRICTO:
 Un sitio promedio del mercado parte de 50 puntos. Cada inconsistencia de sistema, cada elemento fuera de grilla, cada componente con tratamiento distinto al resto, resta puntos. No inflés el score por cortesía ni por dar una impresión positiva. Un score de 70+ debe ganarse con coherencia visual real y sostenida de arriba a abajo. Si ves un problema, marcalo como critical cuando rompe el sistema de diseño, no lo suavices como warning para no incomodar.
 
+DISTINCIÓN CRÍTICA — VARIACIÓN INTENCIONAL vs. INCONSISTENCIA:
+Antes de marcar algo como problema, determiná si la diferencia visual es intencional o accidental. Usá estas reglas:
+
+- VARIACIÓN INTENCIONAL (no penalizar): secciones que usan distintos fondos, layouts o tratamientos fotográficos para separar bloques de contenido temáticamente diferentes. Marcas premium y consolidadas frecuentemente usan variación visual controlada como parte de su lenguaje de diseño. Si el cambio visual coincide con un cambio de contexto o propósito (hero → contenido editorial → equipo → contacto), es intencional.
+- INCONSISTENCIA REAL (sí penalizar): el mismo tipo de elemento (dos botones primarios, dos títulos H2, dos tarjetas del mismo tipo) recibe tratamiento visual distinto sin justificación de contexto. El padding de un botón cambia entre secciones. Un ícono está alineado y el de al lado no.
+- AUSENCIA DE CTA AGRESIVO no es un error en sitios institucionales, editoriales o de marcas premium establecidas. En estos casos, evaluá si la jerarquía lleva al usuario hacia una acción apropiada al contexto (explorar contenido, contactar, aplicar).
+- TIPOGRAFÍA SERIF en sitios premium o editoriales no es un problema tipográfico, es una decisión de posicionamiento. No la penalices como "difícil de leer" si el contraste y el tamaño son adecuados.
+- ESPACIADO GENEROSO (mucho espacio en blanco) en sitios premium es intencional. No lo confundas con "espaciado irregular". Solo penalizá si el espaciado es inconsistente entre elementos del mismo tipo.
+
 ---
 
 INSTRUCCIONES DE ANÁLISIS:
@@ -80,7 +89,7 @@ CRITERIOS DE PUNTUACIÓN:
 - typography (25%): legibilidad, jerarquía tipográfica, consistencia, alineación de texto en componentes
 - composition (20%): grilla, espaciado, uso del espacio en blanco, simetría de componentes
 - consistency (25%): sistema de diseño, coherencia de botones/badges/cards/íconos entre sí y a lo largo de la página
-- hierarchy (10%): flujo visual, CTA, arquitectura de conversión
+- hierarchy (10%): flujo visual apropiado al tipo de sitio. En sitios de conversión directa (e-commerce, SaaS, servicios masivos): evaluá visibilidad y diferenciación del CTA principal. En sitios institucionales, editoriales o de marcas premium establecidas: evaluá si el flujo lleva al usuario hacia la acción contextualmente apropiada (explorar, contactar, aplicar), sin exigir CTAs de alta presión que contradirían el posicionamiento de la marca.
 
 ---
 
