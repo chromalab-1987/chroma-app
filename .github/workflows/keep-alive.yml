@@ -1,0 +1,31 @@
+name: Supabase keep-alive
+
+# Hace un ping al proyecto de Supabase dos veces por semana (lunes y jueves)
+# para que el plan gratuito no lo pause por inactividad (~7 días sin requests).
+on:
+  schedule:
+    - cron: "0 12 * * 1,4"   # Lunes y jueves a las 12:00 UTC (09:00 Argentina)
+  workflow_dispatch: {}       # Permite ejecutarlo a mano desde la pestaña Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping a Supabase (REST + Auth)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -e
+          echo "Ping REST API..."
+          curl -sf -o /dev/null -w "REST -> HTTP %{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+
+          echo "Ping Auth health..."
+          curl -sf -o /dev/null -w "Auth -> HTTP %{http_code}\n" \
+            "$SUPABASE_URL/auth/v1/health" \
+            -H "apikey: $SUPABASE_ANON_KEY"
+
+          echo "✅ Proyecto activo — $(date -u '+%Y-%m-%d %H:%M UTC')"
