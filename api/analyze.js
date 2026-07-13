@@ -151,7 +151,7 @@ export default async function handler(req, res) {
           ],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 16384,
             responseMimeType: "application/json",
           },
         }),
@@ -165,7 +165,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: errMsg });
     }
 
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const raw = parts
+      .filter((p) => typeof p.text === "string" && !p.thought)
+      .map((p) => p.text)
+      .join("");
 
     // Con responseMimeType json el parseo debería ser directo; el fallback queda por las dudas
     let parsed = null;
@@ -181,7 +185,7 @@ export default async function handler(req, res) {
     }
 
     if (!parsed) {
-      const errDetail = data.candidates?.[0]?.finishReason || raw.slice(0, 200);
+      const errDetail = `finishReason=${data.candidates?.[0]?.finishReason || "?"} parts=${parts.length} raw=${raw.slice(0, 200)}`;
       throw new Error(`No se pudo extraer JSON de la respuesta. Detalle: ${errDetail}`);
     }
 
