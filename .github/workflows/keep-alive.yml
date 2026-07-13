@@ -1,31 +1,39 @@
 name: Supabase keep-alive
 
-# Hace un ping al proyecto de Supabase dos veces por semana (lunes y jueves)
-# para que el plan gratuito no lo pause por inactividad (~7 días sin requests).
+# Ping al proyecto de Supabase dos veces por semana (lunes y jueves)
+# para que el plan gratuito no lo pause por inactividad (~7 dias sin requests).
 on:
   schedule:
-    - cron: "0 12 * * 1,4"   # Lunes y jueves a las 12:00 UTC (09:00 Argentina)
-  workflow_dispatch: {}       # Permite ejecutarlo a mano desde la pestaña Actions
+    - cron: "0 12 * * 1,4"   # Lunes y jueves 12:00 UTC (09:00 Argentina)
+  workflow_dispatch: {}       # Permite ejecutarlo a mano desde Actions
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping a Supabase (REST + Auth)
+      - name: Ping a Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          set -e
-          echo "Ping REST API..."
-          curl -sf -o /dev/null -w "REST -> HTTP %{http_code}\n" \
-            "$SUPABASE_URL/rest/v1/" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+          # Diagnostico de secrets (sin revelar valores)
+          if [ -z "$SUPABASE_URL" ]; then echo "❌ SUPABASE_URL esta vacio o mal nombrado"; exit 1; fi
+          if [ -z "$SUPABASE_ANON_KEY" ]; then echo "❌ SUPABASE_ANON_KEY esta vacio o mal nombrado"; exit 1; fi
+          URL="${SUPABASE_URL%/}"   # quitar barra final si la hay
+          echo "URL: $URL"
+          echo "Key: ${SUPABASE_ANON_KEY:0:12}... (largo: ${#SUPABASE_ANON_KEY})"
 
-          echo "Ping Auth health..."
-          curl -sf -o /dev/null -w "Auth -> HTTP %{http_code}\n" \
-            "$SUPABASE_URL/auth/v1/health" \
-            -H "apikey: $SUPABASE_ANON_KEY"
+          AUTH=$(curl -s -o /dev/null -w "%{http_code}" "$URL/auth/v1/health" -H "apikey: $SUPABASE_ANON_KEY")
+          echo "Auth health -> HTTP $AUTH"
 
-          echo "✅ Proyecto activo — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          REST=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "REST API   -> HTTP $REST"
+
+          # Con que uno de los dos responda 200 alcanza como actividad
+          if [ "$AUTH" = "200" ] || [ "$REST" = "200" ]; then
+            echo "✅ Proyecto activo — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          else
+            echo "❌ Ningun endpoint respondio 200. Revisar la key (usar anon/publishable, no service_role) y la URL."
+            exit 1
+          fi
