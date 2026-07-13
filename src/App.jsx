@@ -190,6 +190,78 @@ function exportPDF(result, siteUrl) {
   win.onload = () => win.print();
 }
 
+function exportComparePDF(result, result2, siteUrl, siteUrl2) {
+  const col = (s) => s >= 80 ? "#3CB87A" : s >= 55 ? "#E89B3C" : "#E8453C";
+  const lbl = (s) => s >= 80 ? "Excelente" : s >= 65 ? "Bueno" : s >= 50 ? "Regular" : "Crítico";
+  const tie = result.score === result2.score;
+  const winnerUrl = result.score > result2.score ? siteUrl : siteUrl2;
+  const diff = Math.abs(result.score - result2.score);
+
+  const siteCol = (r, url, label) => `
+    <div class="site-col">
+      <div class="site-label">${label}</div>
+      <div class="site-url">🔗 ${url}</div>
+      ${r.screenshot ? `<div class="shot-wrap"><img src="${r.screenshot}" class="shot" alt="Captura ${label}" /></div>` : ""}
+      <div class="score-mini">
+        <div class="score-circle" style="border-color:${col(r.score)};">
+          <div style="font-size:30px;font-weight:900;color:${col(r.score)};">${r.score}</div>
+          <div style="font-size:10px;color:#888;">${lbl(r.score)}</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;line-height:1.5;">${r.summary}</div>
+      </div>
+      <div class="section"><div class="section-title">Breakdown</div>
+      ${Object.entries(r.breakdown).map(([k,v])=>`<div class="bar-row"><div class="bar-label"><span>${catLabels[k]||k}</span><span style="color:${col(v)};font-weight:700;">${v}</span></div><div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${col(v)};"></div></div></div>`).join("")}
+      </div>
+      <div class="section"><div class="section-title">Problemas</div>
+      ${r.issues?.length>0?r.issues.map(i=>`<div class="issue" style="background:${i.severity==="error"?"rgba(232,69,60,0.07)":"rgba(232,155,60,0.07)"};border:1px solid ${i.severity==="error"?"rgba(232,69,60,0.2)":"rgba(232,155,60,0.2)"};">${i.severity==="error"?"❌":"⚠️"} ${i.label}</div>`).join(""):"<p style='font-size:12px;color:#888;'>Sin problemas críticos ✓</p>"}
+      </div>
+      <div class="section"><div class="section-title">Recomendaciones</div>
+      ${r.recommendations?.map((rec,i)=>{const isObj=rec&&typeof rec==="object";const action=isObj?rec.action:rec;const why=isObj?rec.why:null;const priority=isObj?rec.priority:null;const pColor=priority==="high"?"#E8453C":priority==="medium"?"#E89B3C":"#888";return`<div class="reco"><div class="reco-num">${i+1}</div><div>${priority?`<div style="font-size:10px;color:${pColor};text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:3px;">${priority} priority</div>`:""}${action}${why?`<div style="font-size:11px;color:#888;margin-top:4px;font-style:italic;">${why}</div>`:""}</div></div>`}).join("")||""}
+      </div>
+    </div>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comparación Chroma — ${siteUrl} vs ${siteUrl2}</title>
+  <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;padding:32px;}
+  .header{display:flex;align-items:center;gap:16px;margin-bottom:24px;border-bottom:2px solid #7B35D4;padding-bottom:18px;}
+  .logo{width:44px;height:44px;background:linear-gradient(135deg,#4A1D8C,#9B55F4);border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:20px;}
+  .verdict{text-align:center;background:#f8f8fc;border-radius:16px;padding:20px;margin-bottom:24px;page-break-inside:avoid;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  .site-col{min-width:0;}
+  .site-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;font-weight:600;}
+  .site-url{font-size:12px;color:#7B35D4;margin-bottom:10px;word-break:break-all;}
+  .shot-wrap{max-height:300px;overflow:hidden;border-radius:8px;border:1px solid #e0e0e0;margin-bottom:14px;}
+  .shot{width:100%;display:block;}
+  .score-mini{display:flex;align-items:center;gap:14px;background:#f8f8fc;border-radius:12px;padding:16px;margin-bottom:14px;page-break-inside:avoid;}
+  .score-circle{width:80px;height:80px;border-radius:50%;border:7px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+  .section{background:#f8f8fc;border-radius:12px;padding:16px;margin-bottom:14px;page-break-inside:avoid;}
+  .section-title{font-size:10px;color:#888;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;font-weight:600;}
+  .bar-row{margin-bottom:10px;page-break-inside:avoid;}.bar-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px;}
+  .bar-track{height:4px;background:#e0e0e0;border-radius:2px;}.bar-fill{height:100%;border-radius:2px;}
+  .issue{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-radius:8px;margin-bottom:7px;font-size:11px;page-break-inside:avoid;}
+  .reco{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-left:3px solid #7B35D4;background:#f0ebfa;border-radius:0 8px 8px 0;margin-bottom:7px;font-size:11px;page-break-inside:avoid;}
+  .reco-num{background:#4A1D8C;color:#9B55F4;border-radius:5px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;}
+  .footer{margin-top:28px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:14px;}
+  @page{margin:14mm;}
+  </style></head><body>
+  <div class="header"><div class="logo">C</div><div><h1 style="font-size:22px;font-weight:700;">Chroma</h1><p style="font-size:11px;color:#888;letter-spacing:.1em;text-transform:uppercase;">Laboratorio de Identidad Visual · Comparación</p></div></div>
+  <div class="verdict">
+    <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;">Resultado de la comparación</div>
+    ${tie
+      ? `<div style="font-size:20px;font-weight:800;">🤝 Empate técnico — ambos sitios: ${result.score} puntos</div>`
+      : `<div style="font-size:20px;font-weight:800;margin-bottom:4px;">🏆 ${winnerUrl}</div><div style="font-size:12px;color:#888;">supera por ${diff} punto${diff===1?"":"s"} (${Math.max(result.score,result2.score)} vs ${Math.min(result.score,result2.score)})</div>`}
+  </div>
+  <div class="grid">
+    ${siteCol(result, siteUrl, "Sitio 1")}
+    ${siteCol(result2, siteUrl2, "Sitio 2")}
+  </div>
+  <div class="footer">Reporte comparativo generado por Chroma · ${new Date().toLocaleDateString("es-AR")}</div>
+  </body></html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => win.print();
+}
+
 export default function App() {
   const [user, setUser]           = useState(null);
   const [usageCount, setUsageCount] = useState(0);
@@ -829,7 +901,12 @@ export default function App() {
             ))}
           </div>
           <div style={{ ...card, maxWidth: 1200, textAlign: "center", marginBottom: 40 }}>
-            <button onClick={reset} style={{ ...btn(), padding: "13px 32px" }} onMouseEnter={e => e.target.style.transform = "translateY(-1px)"} onMouseLeave={e => e.target.style.transform = "translateY(0)"}>↺ Nueva comparación</button>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              {canExportPDF() && (
+                <button onClick={() => exportComparePDF(result, result2, siteUrl, siteUrl2)} style={{ ...btn(true), padding: "13px 32px" }} onMouseEnter={e => e.target.style.transform = "translateY(-1px)"} onMouseLeave={e => e.target.style.transform = "translateY(0)"}>⬇ Descargar PDF</button>
+              )}
+              <button onClick={reset} style={{ ...btn(), padding: "13px 32px" }} onMouseEnter={e => e.target.style.transform = "translateY(-1px)"} onMouseLeave={e => e.target.style.transform = "translateY(0)"}>↺ Nueva comparación</button>
+            </div>
           </div>
         </div>
       )}
