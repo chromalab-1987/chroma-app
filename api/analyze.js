@@ -112,10 +112,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   const screenshotKey = process.env.SCREENSHOT_API_KEY;
 
-  if (!groqKey) return res.status(500).json({ error: "GROQ_API_KEY no configurada." });
+  if (!geminiKey) return res.status(500).json({ error: "GEMINI_API_KEY no configurada." });
   if (!screenshotKey) return res.status(500).json({ error: "SCREENSHOT_API_KEY no configurada." });
 
   const { siteUrl } = req.body;
@@ -133,64 +133,55 @@ export default async function handler(req, res) {
     const arrayBuffer = await screenshotRes.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-    // 2. Analizar con Groq (vision)
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64}`,
-                },
-              },
-              {
-                type: "text",
-                text: PROMPT,
-              },
-            ],
+    // 2. Analizar con Gemini (JSON mode nativo)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { inline_data: { mime_type: "image/jpeg", data: base64 } },
+                { text: PROMPT },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 4096,
+            responseMimeType: "application/json",
           },
-        ],
-        temperature: 0.3,
-        max_tokens: 4096,
-      }),
-    });
+        }),
+      }
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      const errMsg = data.error?.message || "Error de Groq.";
+      const errMsg = data.error?.message || "Error de Gemini.";
       return res.status(500).json({ error: errMsg });
     }
 
-    const raw = data.choices?.[0]?.message?.content || "";
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Intentar extraer JSON de la respuesta
+    // Con responseMimeType json el parseo debería ser directo; el fallback queda por las dudas
     let parsed = null;
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        parsed = JSON.parse(match[0]);
-      } catch (e) {
-        // JSON malformado — intentar limpiar y re-parsear
-        const cleaned = match[0]
-          .replace(/,\s*}/g, "}")
-          .replace(/,\s*]/g, "]");
-        try { parsed = JSON.parse(cleaned); } catch (_) {}
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0].replace(/,\s*}/g, "}").replace(/,\s*]/g, "]"));
+        } catch (_) {}
       }
     }
 
     if (!parsed) {
-      // Si Groq devolvió error de rate limit u otro mensaje
-      const errDetail = data.choices?.[0]?.finish_reason || raw.slice(0, 200);
+      const errDetail = data.candidates?.[0]?.finishReason || raw.slice(0, 200);
       throw new Error(`No se pudo extraer JSON de la respuesta. Detalle: ${errDetail}`);
     }
 
